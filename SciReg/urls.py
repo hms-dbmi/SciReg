@@ -15,9 +15,11 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
+from SciReg.auth0authenticate import jwt_login
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^registration/', include('registration.urls')),
-    url(r'^login/', include("login.urls")),
+    url(r'^login/$', jwt_login),
+    url(r'^', include("registration.urls")),
 ]

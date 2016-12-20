@@ -39,8 +39,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'login',
     'stronghold',
+    'bootstrap3',
+    'registration'
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -105,15 +106,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LOGIN_URL = '/login/auth/'
-AUTH0_DOMAIN = ''
-AUTH0_CLIENT_ID = ''
-AUTH0_SECRET = ''
-AUTH0_CALLBACK_URL = ''
-AUTH0_SUCCESS_URL = '/login/landingpage/'
+AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN")
+AUTH0_CLIENT_ID = os.environ.get("AUTH0_CLIENT_ID")
+AUTH0_SECRET = os.environ.get("AUTH0_SECRET")
+AUTH0_SUCCESS_URL = os.environ.get("AUTH0_SUCCESS_URL")
+AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 
-AUTHENTICATION_BACKENDS = ('login.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
+LOGIN_URL='/login/'
 
+ACCOUNT_SERVER_URL = os.environ.get("ACCOUNT_SERVER_URL")
+PERMISSION_SERVER = os.environ.get("PERMISSION_SERVER_URL")
+
+AUTHENTICATION_BACKENDS = ('SciReg.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
@@ -133,3 +137,27 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 
 STATIC_URL = '/static/'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': './debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+try:
+    from .local_settings import *
+except ImportError:
+    pass
