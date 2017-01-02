@@ -35,7 +35,7 @@ def jwt_login(request):
 
         return redirect(redirect_url)
     else:
-        return redirect(settings.ACCOUNT_SERVER_URL + "?next=http://" + settings.AUTH0_SUCCESS_URL)
+        return redirect(settings.ACCOUNT_SERVER_URL + "?next=" + settings.AUTH0_SUCCESS_URL)
 
 
 class Auth0Authentication(object):
