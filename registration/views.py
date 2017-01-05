@@ -2,12 +2,18 @@ from django.shortcuts import render
 from .forms import RegistrationForm, ProfileForm
 from registration.models import Registration
 from django.http import HttpResponseRedirect
+from rest_framework import viewsets, permissions, generics
+from registration.serializers import RegistrationSerializer
+from registration.permissions import IsAssociatedUser
+from django.contrib.auth.decorators import login_required
 
 import logging
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+
+@login_required
 def register(request, template_name='registration/register.html'):
 
     if request.method == 'POST':
@@ -23,6 +29,7 @@ def register(request, template_name='registration/register.html'):
     return render(request, template_name, {'form': form})
 
 
+@login_required
 def profile(request, template_name='registration/profile.html'):
     user = request.user
 
@@ -51,7 +58,24 @@ def profile(request, template_name='registration/profile.html'):
     return render(request, template_name, {'form': form, 'user': user, 'jwt': request.COOKIES.get("DBMI_JWT", None)})
 
 
+@login_required
 def access(request, template_name='registration/access.html'):
     return render(request, template_name)
 
 
+class RegistrationViewSet(viewsets.ModelViewSet):
+    queryset = Registration.objects.all()
+    serializer_class = RegistrationSerializer
+    permission_classes = (permissions.IsAuthenticated, IsAssociatedUser,)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if Registration.objects.filter(email=user.email).exists():
+            return Registration.objects.filter(email=user.email)
+        else:
+            serializer.save(user=user, email=user.email)
+
+    def get_queryset(self):
+        user = self.request.user
+        return Registration.objects.filter(user=user)

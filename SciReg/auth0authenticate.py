@@ -18,7 +18,14 @@ def jwt_login(request):
     # If not logged in, check for cookie with JWT.
     if not request.user.is_authenticated():
         try:
-            jwt_string = request.COOKIES.get("DBMI_JWT", None)
+
+            if 'HTTP_AUTHORIZATION' in request.META and not request.META['HTTP_AUTHORIZATION'].startswith('Basic '):
+                authstring = request.META['HTTP_AUTHORIZATION']
+                if authstring.startswith('JWT '):
+                    jwt_string = authstring[4:]
+            else:
+                jwt_string = request.COOKIES.get("DBMI_JWT", None)
+
             payload = jwt.decode(jwt_string, base64.b64decode(settings.AUTH0_SECRET, '-_'), algorithms=['HS256'],
                                  audience=settings.AUTH0_CLIENT_ID)
             request.session['profile'] = payload
