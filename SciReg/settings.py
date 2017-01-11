@@ -26,13 +26,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'r0+ej(+0q1dl!1e$f6l!lpsqxkn^iky_g4am9+l_09_mj(5xw('
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
+DEBUG = False
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -76,10 +72,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'SciReg.wsgi.application'
 
-
 # Database
-# https://docs.djangoproject.com/en/1.10/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -87,6 +80,32 @@ DATABASES = {
     }
 }
 
+
+# Internationalization
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
+
+
+#########
+# STATIC FILE CONFIGS
+DJANGO_ROOT = dirname(dirname(abspath(__file__)))
+SITE_ROOT = dirname(DJANGO_ROOT)
+STATIC_ROOT = normpath(join(SITE_ROOT, 'SciReg', 'assets'))
+STATIC_URL = '/static/'
+STATICFILES_DIRS = (
+    normpath(join(SITE_ROOT, 'SciReg', 'static')),
+)
+STATICFILES_FINDERS = (
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+)
+#########
+
+#########
+# Specifics
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',
                                    'rest_framework.permissions.DjangoModelPermissions'),
@@ -104,7 +123,6 @@ JWT_AUTH = {
     'JWT_PAYLOAD_GET_USERNAME_HANDLER': 'registration.permissions.jwt_get_username_from_payload'
 }
 
-AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN")
 AUTH0_CLIENT_ID = os.environ.get("AUTH0_CLIENT_ID")
 AUTH0_SECRET = os.environ.get("AUTH0_SECRET")
 AUTH0_SUCCESS_URL = os.environ.get("AUTH0_SUCCESS_URL")
@@ -113,46 +131,12 @@ AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 LOGIN_URL='/login/'
 
 ACCOUNT_SERVER_URL = os.environ.get("ACCOUNT_SERVER_URL")
-PERMISSION_SERVER = os.environ.get("PERMISSION_SERVER_URL")
 
 AUTHENTICATION_BACKENDS = ('SciReg.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
-# Internationalization
-# https://docs.djangoproject.com/en/1.10/topics/i18n/
+ALLOWED_HOSTS = ['registration.aws.dbmi.hms.harvard.edu']
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
-USE_L10N = True
-
-USE_TZ = True
-
-# Absolute filesystem path to the Django project directory:
-DJANGO_ROOT = dirname(dirname(abspath(__file__)))
-
-# Absolute filesystem path to the top-level project folder:
-SITE_ROOT = dirname(DJANGO_ROOT)
-
-# THIS IS WHERE FILES ARE COLLECTED INTO.
-STATIC_ROOT = normpath(join(SITE_ROOT, 'SciReg', 'assets'))
-
-# See: https://docs.djangoproject.com/en/dev/ref/settings/#static-url
-STATIC_URL = '/static/'
-
-# THIS IS WHERE FILES ARE COLLECTED FROM
-# See: https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#std:setting-STATICFILES_DIRS
-STATICFILES_DIRS = (
-    normpath(join(SITE_ROOT, 'SciReg', 'static')),
-)
-
-# See: https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#staticfiles-finders
-STATICFILES_FINDERS = (
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-)
+#########
 
 try:
     from .local_settings import *

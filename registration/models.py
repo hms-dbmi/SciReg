@@ -3,7 +3,12 @@ from django.db import models
 # Users are linked to a registration.
 from django.contrib.auth.models import User
 
+
 class Registration(models.Model):
+    """
+    This is a model of a user's registration.
+    """
+
     ACADEMIC = 'AC'
     INDUSTRY = 'IN'
 

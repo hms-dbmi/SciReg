@@ -11,4 +11,9 @@ class IsAssociatedUser(permissions.BasePermission):
 
 
 def jwt_get_username_from_payload(payload):
+    """
+    Custom method that forces username to be e-mail address.
+    :param payload:
+    :return:
+    """
     return payload.get('email')

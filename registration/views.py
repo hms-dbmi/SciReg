@@ -14,22 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 @login_required
-def register(request, template_name='registration/register.html'):
-
-    if request.method == 'POST':
-        form = RegistrationForm(request.POST)
-        if form.is_valid():
-            # process the data in form.cleaned_data as required
-            # ...
-            # redirect to a new URL:
-            return HttpResponseRedirect('/registration/profile/')
-    else:
-        form = RegistrationForm()
-
-    return render(request, template_name, {'form': form})
-
-
-@login_required
 def profile(request, template_name='registration/profile.html'):
     user = request.user
 

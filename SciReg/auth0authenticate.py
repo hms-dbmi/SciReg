@@ -2,29 +2,25 @@ from django.contrib.auth.models import User
 from django.contrib import auth as django_auth
 from django.contrib.auth import login
 from django.conf import settings
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 
 import jwt
 import base64
-import logging
 
 from stronghold.decorators import public
-
-logger = logging.getLogger(__name__)
 
 
 @public
 def jwt_login(request):
+    """
+    Log a user in via a JWT token.
+    :param request:
+    :return:
+    """
     # If not logged in, check for cookie with JWT.
     if not request.user.is_authenticated():
         try:
-
-            if 'HTTP_AUTHORIZATION' in request.META and not request.META['HTTP_AUTHORIZATION'].startswith('Basic '):
-                authstring = request.META['HTTP_AUTHORIZATION']
-                if authstring.startswith('JWT '):
-                    jwt_string = authstring[4:]
-            else:
-                jwt_string = request.COOKIES.get("DBMI_JWT", None)
+            jwt_string = request.COOKIES.get("DBMI_JWT", None)
 
             payload = jwt.decode(jwt_string, base64.b64decode(settings.AUTH0_SECRET, '-_'), algorithms=['HS256'],
                                  audience=settings.AUTH0_CLIENT_ID)
@@ -33,9 +29,9 @@ def jwt_login(request):
             if user:
                 login(request, user)
             else:
-                logger.error("Could not log user in.")
+                print("Could not log user in.")
         except jwt.InvalidTokenError:
-            logger.error("No/Bad JWT Token.")
+            print("No/Bad JWT Token.")
 
     if request.user.is_authenticated():
         redirect_url = request.GET.get("next", settings.AUTH0_SUCCESS_URL)
@@ -46,14 +42,18 @@ def jwt_login(request):
 
 
 class Auth0Authentication(object):
-
     def authenticate(self, **token_dictionary):
-        logger.debug("Attempting to Authenticate User - " + token_dictionary["email"])
+        """
+        Override authentication mechanism to use e-mail address as username.
+        :param token_dictionary:
+        :return:
+        """
+        print("Attempting to Authenticate User - " + token_dictionary["email"])
 
         try:
             user = User.objects.get(username=token_dictionary["email"])
         except User.DoesNotExist:
-            logger.debug("User not found, creating.")
+            print("User not found, creating.")
 
             user = User(username=token_dictionary["email"], email=token_dictionary["email"])
             user.is_staff = True
