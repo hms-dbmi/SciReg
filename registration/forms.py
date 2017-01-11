@@ -20,6 +20,7 @@ DBMI_INTERESTS_CHOICES = (
     (TECHNICAL_GUIDANCE, 'Technical Guidance'),
 )
 
+
 class RegistrationForm(forms.Form):
     email = forms.CharField(label='E-Mail', max_length=100)
     affiliation = forms.CharField(label='Affiliation', max_length=100)

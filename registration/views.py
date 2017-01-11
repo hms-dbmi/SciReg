@@ -1,16 +1,10 @@
 from django.shortcuts import render
 from .forms import RegistrationForm, ProfileForm
 from registration.models import Registration
-from django.http import HttpResponseRedirect
 from rest_framework import viewsets, permissions, generics
 from registration.serializers import RegistrationSerializer
 from registration.permissions import IsAssociatedUser
 from django.contrib.auth.decorators import login_required
-
-import logging
-
-# Get an instance of a logger
-logger = logging.getLogger(__name__)
 
 
 @login_required
