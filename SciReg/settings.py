@@ -75,11 +75,14 @@ WSGI_APPLICATION = 'SciReg.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'scireg',
+        'USER': os.environ.get("MYSQL_USERNAME"),
+        'PASSWORD': os.environ.get("MYSQL_PASSWORD"),
+        'HOST': os.environ.get("MYSQL_HOST"),
+        'PORT': os.environ.get("MYSQL_PORT"),
     }
 }
-
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -128,13 +131,18 @@ AUTH0_SECRET = os.environ.get("AUTH0_SECRET")
 AUTH0_SUCCESS_URL = os.environ.get("AUTH0_SUCCESS_URL")
 AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 
-LOGIN_URL='/login/'
+LOGIN_URL = '/login/'
 
 ACCOUNT_SERVER_URL = os.environ.get("ACCOUNT_SERVER_URL")
 
 AUTHENTICATION_BACKENDS = ('SciReg.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
-ALLOWED_HOSTS = ['registration.aws.dbmi.hms.harvard.edu']
+ALLOWED_HOSTS = ['.dbmi.hms.harvard.edu']
+
+EMAIL_HOST = 'localhost'
+EMAIL_PORT = 1025
+
+CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
 
 #########
 
