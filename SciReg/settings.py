@@ -14,6 +14,7 @@ import os
 import base64
 
 from os.path import normpath, join, dirname, abspath
+import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -143,6 +144,21 @@ EMAIL_HOST = 'localhost'
 EMAIL_PORT = 1025
 
 CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
+
+
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+        }
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG'
+    }
+}
 
 #########
 

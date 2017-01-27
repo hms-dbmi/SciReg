@@ -13,6 +13,7 @@ from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from datetime import timedelta
 from django.http import HttpResponse
 
+
 EMAIL_CONFIRM_SALT = "(%*^#Q)*(%^)Q#*^%#)*Q(JKHGFAJKHGD"
 
 
@@ -93,7 +94,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
         signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
 
-        email_send("User account creation confirmation", [user.email], message="verify", extra={"signed_value": signed_value, "confirm_url": settings["CONFIRM_EMAIL_URL"]})
+        email_send("User account creation confirmation", [user.email], message="verify", extra={"signed_value": signed_value, "confirm_url": settings.CONFIRM_EMAIL_URL})
 
         return HttpResponse("SENT")
 
