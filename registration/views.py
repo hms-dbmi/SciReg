@@ -60,7 +60,10 @@ def email_confirm(request, template_name='registration/confirmed.html'):
     signer = TimestampSigner(salt=EMAIL_CONFIRM_SALT)
 
     try:
-        print(signer.unsign(email_confirm_value, max_age=timedelta(seconds=10)))
+        print(signer.unsign(email_confirm_value, max_age=timedelta(seconds=300)))
+        registration, created = Registration.objects.get_or_create(user_id=user.id)
+        registration.email_confirmed = True
+        registration.save()
     except SignatureExpired:
         return HttpResponse("SIGNATURE EXPIRED")
     except BadSignature:
