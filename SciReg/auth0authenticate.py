@@ -56,8 +56,6 @@ class Auth0Authentication(object):
             print("User not found, creating.")
 
             user = User(username=token_dictionary["email"], email=token_dictionary["email"])
-            user.is_staff = True
-            user.is_superuser = True
             user.save()
         return user
 

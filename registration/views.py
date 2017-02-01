@@ -3,8 +3,9 @@ from .forms import ProfileForm
 from registration.models import Registration
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import list_route
-from registration.serializers import RegistrationSerializer
+from registration.serializers import RegistrationSerializer, UserSerializer
 from registration.permissions import IsAssociatedUser
+from rest_framework.permissions import AllowAny
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
 from django.core.mail import send_mail
@@ -12,7 +13,10 @@ from django.conf import settings
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from datetime import timedelta
 from django.http import HttpResponse
+from django.contrib.auth.models import User
 
+import jwt
+import base64
 
 EMAIL_CONFIRM_SALT = "(%*^#Q)*(%^)Q#*^%#)*Q(JKHGFAJKHGD"
 
@@ -100,6 +104,29 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         email_send("User account creation confirmation", [user.email], message="verify", extra={"signed_value": signed_value, "confirm_url": settings.CONFIRM_EMAIL_URL})
 
         return HttpResponse("SENT")
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = (AllowAny,)
+
+    def perform_create(self, serializer):
+
+        jwt_string = self.request.POST['JWT']
+
+        try:
+            payload = jwt.decode(jwt_string, base64.b64decode(settings.AUTH0_SECRET, '-_'), algorithms=['HS256'], audience=settings.AUTH0_CLIENT_ID)
+        except jwt.InvalidTokenError:
+            print("No/Bad JWT Token.")
+
+        if User.objects.filter(email=payload['email']).exists():
+            return User.objects.filter(email=payload['email'])
+        else:
+            user = User(username=payload['email'], email=payload['email'])
+            user.set_unusable_password()
+            user.save()
+            return user
 
 
 def email_send(subject=None, recipients=None, message=None, extra=None):

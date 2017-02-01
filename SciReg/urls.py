@@ -1,11 +1,12 @@
 from django.conf.urls import url, include
 from django.contrib import admin
 from SciReg.auth0authenticate import jwt_login
-from registration.views import RegistrationViewSet
+from registration.views import RegistrationViewSet, UserViewSet
 
 from rest_framework import routers
 router = routers.DefaultRouter()
 router.register(r'register', RegistrationViewSet)
+router.register(r'users', UserViewSet)
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
