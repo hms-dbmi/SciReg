@@ -1,13 +1,19 @@
+import jwt
+import base64
+
 from django.contrib.auth.models import User
 from django.contrib import auth as django_auth
 from django.contrib.auth import login
 from django.conf import settings
 from django.shortcuts import redirect
 
-import jwt
-import base64
-
 from stronghold.decorators import public
+
+from django.contrib.auth import get_user_model
+from django.utils.translation import ugettext as _
+from rest_framework import exceptions
+from rest_framework_jwt.authentication import JSONWebTokenAuthentication
+from rest_framework_jwt.settings import api_settings
 
 
 @public
@@ -66,3 +72,32 @@ class Auth0Authentication(object):
             return None
 
 
+jwt_get_username_from_payload = api_settings.JWT_PAYLOAD_GET_USERNAME_HANDLER
+
+
+class Auth0JSONWebTokenAuthentication(JSONWebTokenAuthentication):
+
+    def authenticate_credentials(self, payload):
+        """
+        Returns an active user that matches the payload's user id and email.
+        """
+        User = get_user_model()
+        username = jwt_get_username_from_payload(payload)
+
+        if not username:
+            msg = _('Invalid payload.')
+            raise exceptions.AuthenticationFailed(msg)
+
+        try:
+            user = User.objects.get_by_natural_key(username)
+        except User.DoesNotExist:
+            print("User not found, creating.")
+
+            user = User(username=username, email=username)
+            user.save()
+
+        if not user.is_active:
+            msg = _('User account is disabled.')
+            raise exceptions.AuthenticationFailed(msg)
+
+        return user
