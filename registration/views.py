@@ -6,7 +6,6 @@ from rest_framework.decorators import list_route
 from registration.serializers import RegistrationSerializer, UserSerializer
 from registration.permissions import IsAssociatedUser
 from rest_framework.permissions import AllowAny
-from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.conf import settings
@@ -14,25 +13,33 @@ from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from datetime import timedelta
 from django.http import HttpResponse
 from django.contrib.auth.models import User
+from SciReg.auth0authenticate import user_auth_and_jwt
+
 
 import jwt
 import base64
 
+import logging
+logger = logging.getLogger(__name__)
+
 EMAIL_CONFIRM_SALT = "(%*^#Q)*(%^)Q#*^%#)*Q(JKHGFAJKHGD"
 
 
-@login_required
+@user_auth_and_jwt
 def profile(request, template_name='registration/profile.html'):
     user = request.user
+
+    logger.info("[SCIREG][DEBUG][profile] - Rendering user profile for user " + str(user.id))
 
     if request.method == 'POST':
 
         form = ProfileForm(request.POST)
 
         if form.is_valid():
-            registration, created = Registration.objects.get_or_create(user_id=user.id)
+            # User should always have a registration at this point.
+            registration = Registration.objects.get(user_id=user.id)
 
-            registration.email = form.cleaned_data['email']
+            # Extract data from form into registration object.
             registration.affiliation = form.cleaned_data['affiliation']
             registration.affiliation_type = form.cleaned_data['affiliation_type']
             registration.data_interest = form.cleaned_data['data_interest']
@@ -40,22 +47,28 @@ def profile(request, template_name='registration/profile.html'):
             registration.technical_consult_interest = form.cleaned_data['technical_consult_interest']
             registration.save()
 
-            return render(request, template_name, {'form': form})
+            return render(request, template_name, {'form': form, 'jwt': request.COOKIES.get("DBMI_JWT", None)})
     else:
         registration, created = Registration.objects.get_or_create(user_id=user.id)
 
+        # This should be handled as read only pre-popluated.
         registration.email = user.username
+
+        # If this is a new user registration, save so that we capture the e-mail.
+        if created:
+            registration.save()
+
         form = ProfileForm(instance=registration)
 
     return render(request, template_name, {'form': form, 'user': user, 'jwt': request.COOKIES.get("DBMI_JWT", None)})
 
 
-@login_required
+@user_auth_and_jwt
 def access(request, template_name='registration/access.html'):
     return render(request, template_name)
 
 
-@login_required
+@user_auth_and_jwt
 def email_confirm(request, template_name='registration/confirmed.html'):
     user = request.user
 
@@ -64,7 +77,7 @@ def email_confirm(request, template_name='registration/confirmed.html'):
     signer = TimestampSigner(salt=EMAIL_CONFIRM_SALT)
 
     try:
-        print(signer.unsign(email_confirm_value, max_age=timedelta(seconds=300)))
+        signer.unsign(email_confirm_value, max_age=timedelta(seconds=300))
         registration, created = Registration.objects.get_or_create(user_id=user.id)
         registration.email_confirmed = True
         registration.save()

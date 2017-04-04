@@ -3,26 +3,49 @@ import base64
 
 from django.contrib.auth.models import User
 from django.contrib import auth as django_auth
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.conf import settings
 from django.shortcuts import redirect
-
-from stronghold.decorators import public
-
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext as _
 from rest_framework import exceptions
 from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 from rest_framework_jwt.settings import api_settings
 
+import logging
+logger = logging.getLogger(__name__)
 
-@public
+
+def user_auth_and_jwt(function):
+    def wrap(request, *args, **kwargs):
+
+        # User is both logged into this app and via JWT.
+        if request.user.is_authenticated() and request.COOKIES.get("DBMI_JWT", None) is not None:
+            return function(request, *args, **kwargs)
+        # User has a JWT session open but not a Django session. Start a Django session and continue the request.
+        elif not request.user.is_authenticated() and request.COOKIES.get("DBMI_JWT", None) is not None:
+            jwt_login(request)
+            return function(request, *args, **kwargs)
+        # User doesn't pass muster, throw them to the login app.
+        else:
+            logout(request)
+            response = redirect(settings.LOGIN_URL)
+            response.delete_cookie('DBMI_JWT', domain=settings.COOKIE_DOMAIN)
+            return response
+    wrap.__doc__ = function.__doc__
+    wrap.__name__ = function.__name__
+    return wrap
+
+
 def jwt_login(request):
     """
     Log a user in via a JWT token.
     :param request:
     :return:
     """
+
+    logger.debug("[SCIREG][DEBUG][jwt_login] - Logging user in via JWT. Is Authenticated? " + str(request.user.is_authenticated()))
+
     # If not logged in, check for cookie with JWT.
     if not request.user.is_authenticated():
         try:
@@ -41,7 +64,6 @@ def jwt_login(request):
 
     if request.user.is_authenticated():
         redirect_url = request.GET.get("next", settings.AUTH0_SUCCESS_URL)
-
         return redirect(redirect_url)
     else:
         return redirect(settings.ACCOUNT_SERVER_URL + "?next=" + settings.AUTH0_SUCCESS_URL)
@@ -54,12 +76,12 @@ class Auth0Authentication(object):
         :param token_dictionary:
         :return:
         """
-        print("Attempting to Authenticate User - " + token_dictionary["email"])
+        logger.debug("[SCIREG][DEBUG][Auth0Authentication] - Looking for user record." + token_dictionary["email"])
 
         try:
             user = User.objects.get(username=token_dictionary["email"])
         except User.DoesNotExist:
-            print("User not found, creating.")
+            logger.debug("[SCIREG][DEBUG][authenticate] - User not found, creating. ")
 
             user = User(username=token_dictionary["email"], email=token_dictionary["email"])
             user.save()

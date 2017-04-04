@@ -40,4 +40,4 @@ class Registration(models.Model):
 
     registered = models.BooleanField(default=False)
 
-    email_confirmed = models.BooleanField(default=False)
+    email_confirmed = models.BooleanField(default=False, verbose_name="E-Mail Confirmed")

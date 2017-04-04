@@ -115,8 +115,6 @@ REST_FRAMEWORK = {
                                    'rest_framework.permissions.DjangoModelPermissions'),
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
         'SciReg.auth0authenticate.Auth0JSONWebTokenAuthentication',
     ),
 }
@@ -139,6 +137,7 @@ ACCOUNT_SERVER_URL = os.environ.get("ACCOUNT_SERVER_URL")
 AUTHENTICATION_BACKENDS = ('SciReg.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
 ALLOWED_HOSTS = ['.dbmi.hms.harvard.edu']
+COOKIE_DOMAIN = '.dbmi.hms.harvard.edu'
 
 EMAIL_HOST = 'localhost'
 EMAIL_PORT = 1025
@@ -152,12 +151,29 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'stream': sys.stdout,
+        },
+        'file_debug': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+        'file_error': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': 'error.log',
         }
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'file_debug'],
         'level': 'DEBUG'
-    }
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file_error'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
 }
 
 #########
