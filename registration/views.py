@@ -22,9 +22,6 @@ import base64
 import logging
 logger = logging.getLogger(__name__)
 
-EMAIL_CONFIRM_SALT = "(%*^#Q)*(%^)Q#*^%#)*Q(JKHGFAJKHGD"
-
-
 @user_auth_and_jwt
 def profile(request, template_name='registration/profile.html'):
     user = request.user
@@ -109,7 +106,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     def send_confirmation_email(self, request):
         user = request.user
 
-        signer = TimestampSigner(salt=EMAIL_CONFIRM_SALT)
+        signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
         signed_value = signer.sign(user.email)
 
         signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]

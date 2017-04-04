@@ -14,17 +14,20 @@ import os
 import base64
 
 from os.path import normpath, join, dirname, abspath
+from django.utils.crypto import get_random_string
 import sys
+
+chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.10/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'r0+ej(+0q1dl!1e$f6l!lpsqxkn^iky_g4am9+l_09_mj(5xw('
+SECRET_KEY = os.environ.get("SECRET_KEY", get_random_string(50, chars))
+EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
