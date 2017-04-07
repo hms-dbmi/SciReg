@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from .forms import ProfileForm
 from registration.models import Registration
 from rest_framework import viewsets, permissions
@@ -7,14 +7,15 @@ from registration.serializers import RegistrationSerializer, UserSerializer
 from registration.permissions import IsAssociatedUser
 from rest_framework.permissions import AllowAny
 from django.template.loader import render_to_string
-from django.core.mail import send_mail
 from django.conf import settings
 from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from datetime import timedelta
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from SciReg.auth0authenticate import user_auth_and_jwt
-
+from django.core.mail import EmailMultiAlternatives
+from socket import gaierror
+import sys
 
 import jwt
 import base64
@@ -71,11 +72,17 @@ def email_confirm(request, template_name='registration/confirmed.html'):
 
     email_confirm_value = request.GET['email_confirm_value']
     email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
-    signer = TimestampSigner(salt=EMAIL_CONFIRM_SALT)
+
+    signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
 
     try:
         signer.unsign(email_confirm_value, max_age=timedelta(seconds=300))
         registration, created = Registration.objects.get_or_create(user_id=user.id)
+
+        # If this is a new registration make sure we at least save the email/username.
+        if created:
+            registration.email = user.username
+
         registration.email_confirmed = True
         registration.save()
     except SignatureExpired:
@@ -111,7 +118,9 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
         signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
 
-        email_send("User account creation confirmation", [user.email], message="verify", extra={"signed_value": signed_value, "confirm_url": settings.CONFIRM_EMAIL_URL})
+        email_send("Harvard Medical School - E-Mail Verification", [user.email], message="verify", extra={"signed_value": signed_value,
+                                                                                                          "confirm_url": settings.CONFIRM_EMAIL_URL,
+                                                                                                          "user_email": user.email})
 
         return HttpResponse("SENT")
 
@@ -140,19 +149,24 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 def email_send(subject=None, recipients=None, message=None, extra=None):
-
+    """
+    Send an e-mail to a list of participants with the given subject and message. 
+    Extra is dictionary of variables to be swapped into the template.
+    """
     for r in recipients:
-
         msg_html = render_to_string('email/%s.html' % message, extra)
         msg_plain = render_to_string('email/%s.txt' % message, extra)
 
-        print("About to send mail %s" % r)
+        logger.info("[SCIREG][DEBUG][email_send] About to send e-mail to %s" % r)
 
-        if settings.DEBUG and False:
-            print(msg_html)
-        else:
-            print(msg_html)
-            send_mail(subject=subject, message=msg_html, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[r])
+        try:
+            msg = EmailMultiAlternatives(subject, msg_plain, settings.DEFAULT_FROM_EMAIL, [r])
+            msg.attach_alternative(msg_html, "text/html")
+            msg.send()
+        except gaierror:
+            logger.error("[SCIREG][DEBUG][email_send] Could not send mail! Possible bad server connection.")
+        except:
+            print(sys.exc_info()[0])
 
-        print("Email success: %s to %s" % (subject, r))
+        logger.info("[SCIREG][DEBUG][email_send] E-Mail Success!")
 

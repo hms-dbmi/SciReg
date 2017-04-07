@@ -30,6 +30,7 @@ class ProfileForm(forms.ModelForm):
 
     class Meta:
         model = Registration
-        fields = ("email",)
+        fields = ("email", "email_confirmed")
 
     email = forms.CharField(disabled=True)
+    email_confirmed = forms.BooleanField(disabled=True)

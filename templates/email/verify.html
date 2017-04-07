@@ -3,10 +3,11 @@
 {%block title%}People Powered Medicine - Please verify your e-mail address.{%endblock%}
 
 {%block content%}
-{{ registration.first_name }},
+{{ user_email }},<br /><br />
 
-    This e-mail address has been registered with our People Powered Medicine portal. If it was your intention to sign up for this site please verify your e-mail address by clicking below,
-
-    <a href="{{ confirm_url }}{{ signed_value }}">Click here to verify e-mail.</a>
+    This e-mail address has been registered with our <b>People Powered Medicine</b> portal. If it was your intention to sign up for this site please verify your e-mail address by clicking below.
+    <br />
+    <br />
+    <a href="{{ confirm_url }}{{ signed_value }}">{{ confirm_url }}{{ signed_value }}</a>
 
 {%endblock%}

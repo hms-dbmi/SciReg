@@ -142,11 +142,15 @@ AUTHENTICATION_BACKENDS = ('SciReg.auth0authenticate.Auth0Authentication', 'djan
 ALLOWED_HOSTS = ['.dbmi.hms.harvard.edu']
 COOKIE_DOMAIN = '.dbmi.hms.harvard.edu'
 
-EMAIL_HOST = 'localhost'
-EMAIL_PORT = 1025
+EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
+EMAIL_USE_SSL = True
+EMAIL_HOST = os.environ.get("EMAIL_HOST")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_PORT = os.environ.get("EMAIL_PORT")
 
 CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
-
+DEFAULT_FROM_EMAIL = "people.powered.medicine@gmail.com"
 
 LOGGING = {
     'version': 1,
