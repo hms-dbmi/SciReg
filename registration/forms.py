@@ -30,4 +30,6 @@ class ProfileForm(forms.ModelForm):
 
     class Meta:
         model = Registration
-        fields = ("email", "affiliation", "affiliation_type", "software_interest", "data_interest", "technical_consult_interest")
+        fields = ("email",)
+
+    email = forms.CharField(disabled=True)
