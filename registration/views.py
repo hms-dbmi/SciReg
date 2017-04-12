@@ -12,7 +12,7 @@ from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
 from datetime import timedelta
 from django.http import HttpResponse
 from django.contrib.auth.models import User
-from SciReg.auth0authenticate import user_auth_and_jwt
+from pyauth0jwt.auth0authenticate import user_auth_and_jwt
 from django.core.mail import EmailMultiAlternatives
 from socket import gaierror
 import sys

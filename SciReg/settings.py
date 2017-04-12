@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'bootstrap3',
     'registration',
     'rest_framework',
+    'pyauth0jwt'
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -118,7 +119,7 @@ REST_FRAMEWORK = {
                                    'rest_framework.permissions.DjangoModelPermissions'),
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'SciReg.auth0authenticate.Auth0JSONWebTokenAuthentication',
+        'pyauth0jwt.auth0authenticate.Auth0JSONWebTokenAuthentication',
     ),
 }
 
@@ -135,9 +136,9 @@ AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 
 LOGIN_URL = '/login/'
 
-ACCOUNT_SERVER_URL = os.environ.get("ACCOUNT_SERVER_URL")
+AUTHENTICATION_LOGIN_URL = os.environ.get("AUTHENTICATION_LOGIN_URL")
 
-AUTHENTICATION_BACKENDS = ('SciReg.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
+AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
 ALLOWED_HOSTS = ['.dbmi.hms.harvard.edu']
 COOKIE_DOMAIN = '.dbmi.hms.harvard.edu'

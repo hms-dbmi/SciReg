@@ -1,7 +1,7 @@
 from django.conf.urls import url, include
 from django.contrib import admin
 from django.views.defaults import page_not_found
-from SciReg.auth0authenticate import jwt_login
+from pyauth0jwt.auth0authenticate import jwt_login
 from registration.views import RegistrationViewSet, UserViewSet
 
 from rest_framework import routers
