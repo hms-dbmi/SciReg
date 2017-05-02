@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'bootstrap3',
     'registration',
     'rest_framework',
-    'pyauth0jwt'
+    'pyauth0jwt',
+    'pyauth0jwtrest'
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -119,7 +120,7 @@ REST_FRAMEWORK = {
                                    'rest_framework.permissions.DjangoModelPermissions'),
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'pyauth0jwt.auth0authenticate.Auth0JSONWebTokenAuthentication',
+        'pyauth0jwtrest.auth0authenticaterest.Auth0JSONWebTokenAuthentication',
     ),
 }
 
