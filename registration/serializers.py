@@ -1,5 +1,12 @@
 from rest_framework import serializers
 from registration.models import Registration
+from django.contrib.auth.models import User
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('email', 'username')
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -16,4 +23,5 @@ class RegistrationSerializer(serializers.ModelSerializer):
                   'state',
                   'zipcode',
                   'phone_number',
-                  'twitter_handle')
+                  'twitter_handle',
+                  'email_confirmed')

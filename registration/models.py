@@ -39,3 +39,5 @@ class Registration(models.Model):
     technical_consult_interest = models.BooleanField(default=False)
 
     registered = models.BooleanField(default=False)
+
+    email_confirmed = models.BooleanField(default=False, verbose_name="E-Mail Confirmed")

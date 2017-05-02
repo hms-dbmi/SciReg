@@ -14,16 +14,20 @@ import os
 import base64
 
 from os.path import normpath, join, dirname, abspath
+from django.utils.crypto import get_random_string
+import sys
+
+chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.10/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'r0+ej(+0q1dl!1e$f6l!lpsqxkn^iky_g4am9+l_09_mj(5xw('
+SECRET_KEY = os.environ.get("SECRET_KEY", get_random_string(50, chars))
+EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -39,6 +43,8 @@ INSTALLED_APPS = [
     'bootstrap3',
     'registration',
     'rest_framework',
+    'pyauth0jwt',
+    'pyauth0jwtrest'
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -75,11 +81,14 @@ WSGI_APPLICATION = 'SciReg.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'scireg',
+        'USER': os.environ.get("MYSQL_USERNAME"),
+        'PASSWORD': os.environ.get("MYSQL_PASSWORD"),
+        'HOST': os.environ.get("MYSQL_HOST"),
+        'PORT': os.environ.get("MYSQL_PORT"),
     }
 }
-
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -111,9 +120,7 @@ REST_FRAMEWORK = {
                                    'rest_framework.permissions.DjangoModelPermissions'),
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+        'pyauth0jwtrest.auth0authenticaterest.Auth0JSONWebTokenAuthentication',
     ),
 }
 
@@ -128,13 +135,55 @@ AUTH0_SECRET = os.environ.get("AUTH0_SECRET")
 AUTH0_SUCCESS_URL = os.environ.get("AUTH0_SUCCESS_URL")
 AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 
-LOGIN_URL='/login/'
+LOGIN_URL = '/login/'
 
-ACCOUNT_SERVER_URL = os.environ.get("ACCOUNT_SERVER_URL")
+AUTHENTICATION_LOGIN_URL = os.environ.get("AUTHENTICATION_LOGIN_URL")
 
-AUTHENTICATION_BACKENDS = ('SciReg.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
+AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
-ALLOWED_HOSTS = ['registration.aws.dbmi.hms.harvard.edu']
+ALLOWED_HOSTS = ['.dbmi.hms.harvard.edu']
+COOKIE_DOMAIN = '.dbmi.hms.harvard.edu'
+
+EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
+EMAIL_USE_SSL = True
+EMAIL_HOST = os.environ.get("EMAIL_HOST")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_PORT = os.environ.get("EMAIL_PORT")
+
+CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
+DEFAULT_FROM_EMAIL = "people.powered.medicine@gmail.com"
+
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+        },
+        'file_debug': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+        'file_error': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': 'error.log',
+        }
+    },
+    'root': {
+        'handlers': ['console', 'file_debug'],
+        'level': 'DEBUG'
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file_error'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
 
 #########
 
