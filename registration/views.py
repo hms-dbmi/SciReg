@@ -45,7 +45,7 @@ def profile(request, template_name='registration/profile.html'):
             registration.technical_consult_interest = form.cleaned_data['technical_consult_interest']
             registration.save()
 
-            return render(request, template_name, {'form': form, 'jwt': request.COOKIES.get("DBMI_JWT", None)})
+            return render(request, template_name, {'form': form})
     else:
         registration, created = Registration.objects.get_or_create(user_id=user.id)
 
@@ -58,7 +58,7 @@ def profile(request, template_name='registration/profile.html'):
 
         form = ProfileForm(instance=registration)
 
-    return render(request, template_name, {'form': form, 'user': user, 'jwt': request.COOKIES.get("DBMI_JWT", None)})
+    return render(request, template_name, {'form': form, 'user': user})
 
 
 @user_auth_and_jwt
