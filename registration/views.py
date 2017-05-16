@@ -1,5 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from .forms import ProfileForm
+from urllib import parse
 from registration.models import Registration
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import list_route
@@ -45,7 +46,7 @@ def profile(request, template_name='registration/profile.html'):
             registration.technical_consult_interest = form.cleaned_data['technical_consult_interest']
             registration.save()
 
-            return render(request, template_name, {'form': form, 'jwt': request.COOKIES.get("DBMI_JWT", None)})
+            return render(request, template_name, {'form': form})
     else:
         registration, created = Registration.objects.get_or_create(user_id=user.id)
 
@@ -58,7 +59,7 @@ def profile(request, template_name='registration/profile.html'):
 
         form = ProfileForm(instance=registration)
 
-    return render(request, template_name, {'form': form, 'user': user, 'jwt': request.COOKIES.get("DBMI_JWT", None)})
+    return render(request, template_name, {'form': form, 'user': user})
 
 
 @user_auth_and_jwt
@@ -72,6 +73,7 @@ def email_confirm(request, template_name='registration/confirmed.html'):
 
     email_confirm_value = request.GET['email_confirm_value']
     email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
+    success_url = request.GET.get('success_url', None)
 
     signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
 
@@ -89,7 +91,12 @@ def email_confirm(request, template_name='registration/confirmed.html'):
         return HttpResponse("SIGNATURE EXPIRED")
     except BadSignature:
         return HttpResponse("BAD SIGNATURE")
-    return render(request, template_name)
+
+    # Continue on to the next page, if passed. Otherwise render a default page.
+    if success_url:
+        return redirect(success_url)
+    else:
+        return render(request, template_name)
 
 
 class RegistrationViewSet(viewsets.ModelViewSet):
@@ -112,15 +119,31 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     @list_route(methods=['post'])
     def send_confirmation_email(self, request):
         user = request.user
+        success_url = request.data.get('success_url', None)
 
         signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
         signed_value = signer.sign(user.email)
 
         signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
 
-        email_send("Harvard Medical School - E-Mail Verification", [user.email], message="verify", extra={"signed_value": signed_value,
-                                                                                                          "confirm_url": settings.CONFIRM_EMAIL_URL,
-                                                                                                          "user_email": user.email})
+        # Build the link URL then just break it all up.
+        confirm_url = settings.CONFIRM_EMAIL_URL + signed_value
+        confirm_url_parts = list(parse.urlparse(confirm_url))
+        confirm_url_query = dict(parse.parse_qsl(confirm_url_parts[4]))
+
+        # Add needed key-value pairs to the request.
+        if success_url:
+            confirm_url_query.update({'success_url': success_url})
+
+        # Join everything back together.
+        confirm_url_parts[4] = parse.urlencode(confirm_url_query)
+        confirm_url = parse.urlunparse(confirm_url_parts)
+
+        logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url)
+
+        email_send("Harvard Medical School - E-Mail Verification", [user.email],
+                   message="verify",
+                   extra={"confirm_url": confirm_url, "user_email": user.email})
 
         return HttpResponse("SENT")
 

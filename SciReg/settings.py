@@ -142,7 +142,7 @@ AUTHENTICATION_LOGIN_URL = os.environ.get("AUTHENTICATION_LOGIN_URL")
 AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
 ALLOWED_HOSTS = ['.dbmi.hms.harvard.edu']
-COOKIE_DOMAIN = '.dbmi.hms.harvard.edu'
+COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN")
 
 EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
 EMAIL_USE_SSL = True
