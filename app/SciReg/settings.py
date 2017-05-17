@@ -101,11 +101,10 @@ USE_TZ = True
 #########
 # STATIC FILE CONFIGS
 DJANGO_ROOT = dirname(dirname(abspath(__file__)))
-SITE_ROOT = dirname(DJANGO_ROOT)
-STATIC_ROOT = normpath(join(SITE_ROOT, 'SciReg', 'assets'))
+STATIC_ROOT = normpath(join(DJANGO_ROOT, 'assets'))
 STATIC_URL = '/static/'
 STATICFILES_DIRS = (
-    normpath(join(SITE_ROOT, 'SciReg', 'static')),
+    normpath(join(DJANGO_ROOT, 'static')),
 )
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
