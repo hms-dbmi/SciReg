@@ -66,5 +66,7 @@ python manage.py shell -c "from django.contrib.auth.models import User; User.obj
 
 /etc/init.d/nginx restart
 
-gunicorn SciReg.wsgi:application -b 0.0.0.0:8006
+chown -R www-data:www-data /app
+
+gunicorn SciReg.wsgi:application -b 0.0.0.0:8006 --user=www-data --group=www-data
 
