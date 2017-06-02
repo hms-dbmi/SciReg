@@ -151,7 +151,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = os.environ.get("EMAIL_PORT")
 
 CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
-DEFAULT_FROM_EMAIL = "people.powered.medicine@gmail.com"
+DEFAULT_FROM_EMAIL = "ppm-no-reply@dbmi.hms.harvard.edu"
 
 LOGGING = {
     'version': 1,
