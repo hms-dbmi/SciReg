@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.contrib import messages
 from .forms import ProfileForm
 from urllib import parse
 from registration.models import Registration
@@ -87,10 +88,18 @@ def email_confirm(request, template_name='registration/confirmed.html'):
 
         registration.email_confirmed = True
         registration.save()
+
+        # Set a message.
+        messages.success(request, 'Email has been confirmed.',
+                         extra_tags='success', fail_silently=True)
+
     except SignatureExpired:
-        return HttpResponse("SIGNATURE EXPIRED")
+        messages.error(request, 'This email confirmation code has expired, please try again.',
+                       extra_tags='danger', fail_silently=True)
+
     except BadSignature:
-        return HttpResponse("BAD SIGNATURE")
+        messages.error(request, 'This email confirmation code is invalid, please try again.',
+                       extra_tags='danger', fail_silently=True)
 
     # Continue on to the next page, if passed. Otherwise render a default page.
     if success_url:
