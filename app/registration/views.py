@@ -72,7 +72,7 @@ def access(request, template_name='registration/access.html'):
 def email_confirm(request, template_name='registration/confirmed.html'):
     user = request.user
 
-    email_confirm_value = request.GET['email_confirm_value']
+    email_confirm_value = request.GET.get('email_confirm_value', '-')
     email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
     success_url = request.GET.get('success_url', None)
 
