@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from .forms import ProfileForm
-from urllib import parse
 from registration.models import Registration
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import list_route
@@ -17,10 +16,12 @@ from django.contrib.auth.models import User
 from pyauth0jwt.auth0authenticate import user_auth_and_jwt
 from django.core.mail import EmailMultiAlternatives
 from socket import gaierror
+from binascii import Error as PaddingError
 import sys
 
 import jwt
 import base64
+import json
 
 import logging
 logger = logging.getLogger(__name__)
@@ -72,13 +73,26 @@ def access(request, template_name='registration/access.html'):
 def email_confirm(request, template_name='registration/confirmed.html'):
     user = request.user
 
-    email_confirm_value = request.GET.get('email_confirm_value', '-')
-    email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
-    success_url = request.GET.get('success_url', None)
-
-    signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
+    # Set an initial forwarding URL.
+    success_url = None
 
     try:
+        # Get the email confirm data.
+        email_confirm_data = request.GET['email_confirm_value']
+
+        # Decode it and convert it from JSON to dict.
+        email_confirm_json = base64.urlsafe_b64decode(email_confirm_data.encode('utf-8')).decode('utf-8')
+        email_confirm_dict = json.loads(email_confirm_json)
+
+        # Attempt to fetch the value, if non existent, use a dummy string to fail gracefully.
+        email_confirm_value = email_confirm_dict.get('email_confirm_value', '---')
+        email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
+
+        # Get the success url.
+        success_url = email_confirm_dict.get('success_url', None)
+
+        # Verify the code.
+        signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
         signer.unsign(email_confirm_value, max_age=timedelta(seconds=300))
         registration, created = Registration.objects.get_or_create(user_id=user.id)
 
@@ -93,11 +107,13 @@ def email_confirm(request, template_name='registration/confirmed.html'):
         messages.success(request, 'Email has been confirmed.',
                          extra_tags='success', fail_silently=True)
 
-    except SignatureExpired:
+    except SignatureExpired as e:
+        logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
         messages.error(request, 'This email confirmation code has expired, please try again.',
                        extra_tags='danger', fail_silently=True)
 
-    except BadSignature:
+    except Exception as e:
+        logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
         messages.error(request, 'This email confirmation code is invalid, please try again.',
                        extra_tags='danger', fail_silently=True)
 
@@ -128,25 +144,27 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     @list_route(methods=['post'])
     def send_confirmation_email(self, request):
         user = request.user
-        success_url = request.data.get('success_url', None)
 
+        # Store the data to be passed for verification.
+        email_confirm_dict = {}
+
+        # Build the email verification code.
         signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
         signed_value = signer.sign(user.email)
-
         signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
+        email_confirm_dict['email_confirm_value'] = signed_value
 
-        # Build the link URL then just break it all up.
-        confirm_url = settings.CONFIRM_EMAIL_URL + signed_value
-        confirm_url_parts = list(parse.urlparse(confirm_url))
-        confirm_url_query = dict(parse.parse_qsl(confirm_url_parts[4]))
-
-        # Add needed key-value pairs to the request.
+        # Check for a success url.
+        success_url = request.data.get('success_url', None)
         if success_url:
-            confirm_url_query.update({'success_url': success_url})
+            email_confirm_dict['success_url'] = success_url
 
-        # Join everything back together.
-        confirm_url_parts[4] = parse.urlencode(confirm_url_query)
-        confirm_url = parse.urlunparse(confirm_url_parts)
+        # Convert the dict to JSON and then base64 encode it, then URL encode it.
+        email_confirm_json = json.dumps(email_confirm_dict)
+        email_confirm_data = base64.urlsafe_b64encode(bytes(email_confirm_json, 'utf-8')).decode('utf-8')
+
+        # Build the URL.
+        confirm_url = settings.CONFIRM_EMAIL_URL + email_confirm_data
 
         logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url)
 
@@ -201,4 +219,3 @@ def email_send(subject=None, recipients=None, message=None, extra=None):
             print(sys.exc_info()[0])
 
         logger.info("[SCIREG][DEBUG][email_send] E-Mail Success!")
-

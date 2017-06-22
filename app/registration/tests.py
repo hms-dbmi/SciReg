@@ -1,14 +1,16 @@
 import mock
 import re
+import base64
+import json
 
-from django.test import TestCase, Client
+from django.test import TestCase, Client, tag
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.core import mail
 from rest_framework.test import APIClient
 from socket import gaierror
 
-from .views import email_confirm
+from .views import email_confirm, profile
 
 
 class TestUser:
@@ -84,6 +86,17 @@ class EmailVerificationTestCase(TestCase):
         self.api_client = APIClient()
         self.api_client.force_authenticate(self.user, TestUser.token)
 
+    @staticmethod
+    def get_email_data_from_email(body):
+        code = re.search('email_confirm_value\=([^&\s]+)', body).group(1)
+
+        # Decode it and convert it from JSON to dict.
+        email_confirm_json = base64.urlsafe_b64decode(code.encode('utf-8')).decode('utf-8')
+        email_confirm_dict = json.loads(email_confirm_json)
+
+        return email_confirm_dict
+
+    @tag('core')
     def test_email_confirm_unauthorized(self):
 
         # Set the return URL.
@@ -99,7 +112,8 @@ class EmailVerificationTestCase(TestCase):
         self.assertEqual(response.status_code, 401, msg='Response did not return 401 for unauthorized access')
         self.assertEqual(len(mail.outbox), 0, msg='Email confirmation email was sent despite unauthorized access')
 
-    def test_email_confirm_code(self):
+    @tag('core')
+    def test_email_confirm_data(self):
 
         # Set the return URL.
         success_url = 'http://localhost:8010/dashboard/dashboard/'
@@ -116,8 +130,34 @@ class EmailVerificationTestCase(TestCase):
         code = re.search('email_confirm_value\=([^&\s]+)', mail.outbox[0].body).group(1)
 
         # Ensure it exists.
-        self.assertIsNotNone(code, msg='No email confirmation code was included in the email')
+        self.assertIsNotNone(code, msg='No email confirmation data was included in the email')
 
+    @tag('core')
+    def test_email_confirm_data_dict(self):
+
+        # Set the return URL.
+        success_url = 'http://localhost:8010/dashboard/dashboard/'
+
+        # Get the email confirm email.
+        response = self.api_client.post('/api/register/send_confirmation_email/',
+                                        data={'success_url': success_url})
+
+        # Ensure the email sent.
+        self.assertEqual(response.status_code, 200, msg='Response did not return 200 after sending email')
+        self.assertEqual(len(mail.outbox), 1, msg='Email confirmation email was not sent')
+
+        # Get the code.
+        code = re.search('email_confirm_value\=([^&\s]+)', mail.outbox[0].body).group(1)
+
+        # Ensure it exists.
+        self.assertIsNotNone(code, msg='No email confirmation data was included in the email')
+
+        # Decode it and convert it from JSON to dict.
+        email_confirm_dict = self.get_email_data_from_email(mail.outbox[0].body)
+
+        self.assertIsNotNone(email_confirm_dict, msg='No valid dict encoded in email confirm data')
+
+    @tag('core')
     def test_email_confirm_success_url(self):
 
         # Set the return URL.
@@ -131,37 +171,13 @@ class EmailVerificationTestCase(TestCase):
         self.assertEqual(response.status_code, 200, msg='Response did not return 200 after sending email')
         self.assertEqual(len(mail.outbox), 1, msg='Email confirmation email was not sent')
 
-        # Get the code.
-        success_url = re.search('success_url\=([^&\s]+)', mail.outbox[0].body).group(1)
+        # Decode it and convert it from JSON to dict.
+        email_confirm_dict = self.get_email_data_from_email(mail.outbox[0].body)
 
         # Ensure it exists.
-        self.assertIsNotNone(success_url, msg='No success URL was included in the email')
+        self.assertIsNotNone(email_confirm_dict['success_url'], msg='No success URL was included in the email')
 
-    def test_email_confirm_success_contents(self):
-
-        # Set the return URL.
-        success_url = 'http://localhost:8010/dashboard/dashboard/'
-
-        # Get the email confirm email.
-        response = self.api_client.post('/api/register/send_confirmation_email/',
-                                        data={'success_url': success_url})
-
-        # Ensure the email sent.
-        self.assertEqual(response.status_code, 200, msg='Response did not return 200 after sending email')
-        self.assertEqual(len(mail.outbox), 1, msg='Email confirmation email was not sent')
-
-        # Get the code.
-        code = re.search('email_confirm_value\=([^&\s]+)', mail.outbox[0].body).group(1)
-
-        # Ensure it exists.
-        self.assertIsNotNone(code, msg='No email confirmation code was included in the email')
-
-        # Get the code.
-        success_url = re.search('success_url\=([^&\s]+)', mail.outbox[0].body).group(1)
-
-        # Ensure it exists.
-        self.assertIsNotNone(success_url, msg='No success URL was included in the email')
-
+    @tag('core')
     def test_email_confirm_success(self):
 
         # Set the return URL.
@@ -182,8 +198,9 @@ class EmailVerificationTestCase(TestCase):
         response = self.client.get(reverse(email_confirm),
                                    data={'email_confirm_value': code})
 
-        # Ensure it succeeded.
-        self.assertEqual(response.status_code, 200)
+        # Ensure it succeeded and proceeds with the redirect.
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, success_url)
 
         # Check for a message.
         messages = list(response.wsgi_request._messages)
@@ -192,14 +209,11 @@ class EmailVerificationTestCase(TestCase):
         self.assertIn('Email has been confirmed', str(messages[0]),
                       msg='The message text did not match the expected success message')
 
-        # Check for an error.
-        self.assertContains(response, 'Email has been confirmed',
-                      msg_prefix='The response content text did not match the expected success message')
-
+    @tag('core')
     def test_email_confirm_success_redirect(self):
 
         # Set the return URL.
-        success_url = 'http://localhost:8010/dashboard/dashboard/'
+        success_url = reverse(profile)
 
         # Get the email confirm email.
         response = self.api_client.post('/api/register/send_confirmation_email/',
@@ -214,12 +228,11 @@ class EmailVerificationTestCase(TestCase):
 
         # Make the request.
         response = self.client.get(reverse(email_confirm),
-                                   data={'email_confirm_value': code,
-                                         'success_url': success_url},
+                                   data={'email_confirm_value': code},
                                    follow=True)
 
         # Ensure it succeeded.
-        self.assertRedirects(response, status_code=302, target_status_code=404, expected_url=success_url)
+        self.assertRedirects(response, status_code=302, target_status_code=200, expected_url=success_url)
 
         # Check for a message.
         messages = list(response.wsgi_request._messages)
@@ -228,6 +241,7 @@ class EmailVerificationTestCase(TestCase):
         self.assertIn('Email has been confirmed', str(messages[0]),
                       msg='The message text did not match the expected success message')
 
+    @tag('core')
     def test_email_confirm_failure(self):
 
         # Set the return URL.
@@ -245,7 +259,7 @@ class EmailVerificationTestCase(TestCase):
         code = re.search('email_confirm_value\=([^&\s]+)', mail.outbox[0].body).group(1)
 
         # Change a character.
-        code = code[:len(code) - 1]
+        code = code[:len(code) - 12]
 
         # Make the request.
         response = self.client.get(reverse(email_confirm),
@@ -265,6 +279,7 @@ class EmailVerificationTestCase(TestCase):
         # Check for an error.
         self.assertContains(response, 'This email confirmation code is invalid')
 
+    @tag('core')
     def test_email_confirm_empty(self):
 
         # Make the request.
@@ -285,11 +300,21 @@ class EmailVerificationTestCase(TestCase):
         self.assertContains(response, 'This email confirmation code is invalid',
                       msg_prefix='The response content text did not match the expected error message')
 
+    @tag('core')
     def test_email_confirm_invalid(self):
+
+        # Set the parameters.
+        email_confirm_dict = {
+            'email_confirm_value': 'qhdiq38hiuewfhbiu3gf98bgisujbfiwu3fw',
+        }
+
+        # Convert the dict to JSON and then base64 encode it, then URL encode it.
+        email_confirm_json = json.dumps(email_confirm_dict)
+        email_confirm_data = base64.urlsafe_b64encode(bytes(email_confirm_json, 'utf-8')).decode('utf-8')
 
         # Make the request.
         response = self.client.get(reverse(email_confirm),
-                                   data={'email_confirmation_code': 'qhdiq38hiuewfhbiu3gf98bgisujbfiwu3fw'})
+                                   data={'email_confirm_value': email_confirm_data})
 
         # Ensure it returns a valid response.
         self.assertEqual(response.status_code, 200,
@@ -306,19 +331,25 @@ class EmailVerificationTestCase(TestCase):
         self.assertContains(response, 'This email confirmation code is invalid',
                       msg_prefix='The response content text did not match the expected error message')
 
+    @tag('core')
     def test_email_confirm_invalid_redirect(self):
 
         # Set the parameters.
-        data = {
-            'email_verification_code': 'qhdiq38hiuewfhbiu3gf98bgisujbfiwu3fw',
-            'success_url': 'http://www.google.com',
+        email_confirm_dict = {
+            'email_confirm_value': 'qhdiq38hiuewfhbiu3gf98bgisujbfiwu3fw',
+            'success_url': reverse(profile),
         }
 
+        # Convert the dict to JSON and then base64 encode it, then URL encode it.
+        email_confirm_json = json.dumps(email_confirm_dict)
+        email_confirm_data = base64.urlsafe_b64encode(bytes(email_confirm_json, 'utf-8')).decode('utf-8')
+
         # Make the request.
-        response = self.client.get(reverse(email_confirm), data=data)
+        response = self.client.get(reverse(email_confirm), data={'email_confirm_value': email_confirm_data})
 
         # Ensure it redirected.
-        self.assertRedirects(response, status_code=302, target_status_code=200, expected_url=data['success_url'])
+        self.assertRedirects(response, status_code=302, target_status_code=200,
+                             expected_url=email_confirm_dict['success_url'])
 
         # Check for a message.
         messages = list(response.wsgi_request._messages)
