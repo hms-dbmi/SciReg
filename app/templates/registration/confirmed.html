@@ -9,8 +9,15 @@
 
         {% load bootstrap3 %}
 
-        You're email address has been confirmed!
+        {% if messages %}
 
+        {% include 'messages.html' %}
+
+        {% else %}
+
+        An error occurred during the email verification process, please try again.
+
+        {% endif %}
     </div>
 </div>
 
