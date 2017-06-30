@@ -15,6 +15,7 @@ import base64
 
 from os.path import normpath, join, dirname, abspath
 from django.utils.crypto import get_random_string
+from django.contrib.messages import constants as message_constants
 import sys
 
 chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
@@ -31,6 +32,9 @@ EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
+
+# Set the message level.
+MESSAGE_LEVEL = message_constants.INFO
 
 # Application definition
 INSTALLED_APPS = [
