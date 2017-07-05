@@ -44,7 +44,11 @@ export EMAIL_HOST_PASSWORD
 export EMAIL_PORT
 
 SSL_KEY=$(aws ssm get-parameters --names $PS_PATH.ssl_key --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
-SSL_CERT_CHAIN=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+SSL_CERT_CHAIN1=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain1 --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+SSL_CERT_CHAIN2=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain2 --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+SSL_CERT_CHAIN3=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain3 --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+
+SSL_CERT_CHAIN="$SSL_CERT_CHAIN1$SSL_CERT_CHAIN2$SSL_CERT_CHAIN3"
 
 echo $SSL_KEY | base64 -d >> /etc/nginx/ssl/server.key
 echo $SSL_CERT_CHAIN | base64 -d >> /etc/nginx/ssl/server.crt
