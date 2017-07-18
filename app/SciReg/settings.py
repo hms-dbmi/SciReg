@@ -15,6 +15,7 @@ import base64
 
 from os.path import normpath, join, dirname, abspath
 from django.utils.crypto import get_random_string
+from django.contrib.messages import constants as message_constants
 import sys
 
 chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
@@ -31,6 +32,9 @@ EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
+
+# Set the message level.
+MESSAGE_LEVEL = message_constants.INFO
 
 # Application definition
 INSTALLED_APPS = [
@@ -182,6 +186,25 @@ LOGGING = {
             'propagate': True,
         },
     },
+}
+
+# Default settings
+BOOTSTRAP3 = {
+
+    # The URL to the jQuery JavaScript file
+    'jquery_url': '//code.jquery.com/jquery.min.js',
+
+    # The Bootstrap base URL
+    'base_url': '//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/',
+
+    # The complete URL to the Bootstrap CSS file (None means derive it from base_url)
+    'css_url': None,
+
+    # The complete URL to the Bootstrap JavaScript file (None means derive it from base_url)
+    'javascript_url': None,
+
+    # Include jQuery with Bootstrap JavaScript (affects django-bootstrap3 template tags)
+    'include_jquery': True,
 }
 
 #########

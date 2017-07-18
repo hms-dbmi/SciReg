@@ -1,30 +1,26 @@
 #!/bin/bash
 
-echo $ONETIME_TOKEN
+SECRET_KEY=$(aws ssm get-parameters --names $PS_PATH.django_secret --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 
-/vault/vault auth $ONETIME_TOKEN
+AUTH0_DOMAIN=$(aws ssm get-parameters --names $PS_PATH.auth0_domain --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+AUTH0_CLIENT_ID_VAULT=$(aws ssm get-parameters --names $PS_PATH.auth0_client_id --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+AUTH0_SECRET_VAULT=$(aws ssm get-parameters --names $PS_PATH.auth0_secret --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+AUTH0_SUCCESS_URL_VAULT=$(aws ssm get-parameters --names $PS_PATH.auth0_success_url --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+AUTHENTICATION_LOGIN_URL_VAULT=$(aws ssm get-parameters --names $PS_PATH.account_server_url --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+PERMISSION_SERVER_URL_VAULT=$(aws ssm get-parameters --names $PS_PATH.permission_server_url --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+CONFIRM_EMAIL_URL_VAULT=$(aws ssm get-parameters --names $PS_PATH.confirm_email_url --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+EMAIL_SALT_VAULT=$(aws ssm get-parameters --names $PS_PATH.email_salt --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+COOKIE_DOMAIN_VAULT=$(aws ssm get-parameters --names $PS_PATH.cookie_domain --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 
-SECRET_KEY=$(/vault/vault read -field=value $VAULT_PATH/django_secret)
+EMAIL_HOST=$(aws ssm get-parameters --names $PS_PATH.email_host --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+EMAIL_HOST_USER=$(aws ssm get-parameters --names $PS_PATH.email_host_user --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+EMAIL_HOST_PASSWORD=$(aws ssm get-parameters --names $PS_PATH.email_host_password --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+EMAIL_PORT=$(aws ssm get-parameters --names $PS_PATH.email_port --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 
-AUTH0_DOMAIN=$(/vault/vault read -field=value $VAULT_PATH/auth0_domain)
-AUTH0_CLIENT_ID_VAULT=$(/vault/vault read -field=value $VAULT_PATH/auth0_client_id)
-AUTH0_SECRET_VAULT=$(/vault/vault read -field=value $VAULT_PATH/auth0_secret)
-AUTH0_SUCCESS_URL_VAULT=$(/vault/vault read -field=value $VAULT_PATH/auth0_success_url)
-AUTHENTICATION_LOGIN_URL_VAULT=$(/vault/vault read -field=value $VAULT_PATH/account_server_url)
-PERMISSION_SERVER_URL_VAULT=$(/vault/vault read -field=value $VAULT_PATH/permission_server_url)
-CONFIRM_EMAIL_URL_VAULT=$(/vault/vault read -field=value $VAULT_PATH/confirm_email_url)
-EMAIL_SALT_VAULT=$(/vault/vault read -field=value $VAULT_PATH/email_salt)
-COOKIE_DOMAIN_VAULT=$(/vault/vault read -field=value $VAULT_PATH/cookie_domain)
-
-EMAIL_HOST=$(/vault/vault read -field=value $VAULT_PATH/email_host)
-EMAIL_HOST_USER=$(/vault/vault read -field=value $VAULT_PATH/email_host_user)
-EMAIL_HOST_PASSWORD=$(/vault/vault read -field=value $VAULT_PATH/email_host_password)
-EMAIL_PORT=$(/vault/vault read -field=value $VAULT_PATH/email_port)
-
-MYSQL_USERNAME_VAULT=$(/vault/vault read -field=value $VAULT_PATH/mysql_username)
-MYSQL_PASSWORD_VAULT=$(/vault/vault read -field=value $VAULT_PATH/mysql_pw)
-MYSQL_HOST_VAULT=$(/vault/vault read -field=value $DB_VAULT_PATH/mysql_host)
-MYSQL_PORT_VAULT=$(/vault/vault read -field=value $VAULT_PATH/mysql_port)
+MYSQL_USERNAME_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_username --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+MYSQL_PASSWORD_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_pw --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+MYSQL_HOST_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_host --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+MYSQL_PORT_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_port --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 
 export SECRET_KEY
 export AUTH0_DOMAIN
@@ -47,8 +43,12 @@ export EMAIL_HOST_USER
 export EMAIL_HOST_PASSWORD
 export EMAIL_PORT
 
-SSL_KEY=$(/vault/vault read -field=value $VAULT_PATH/ssl_key)
-SSL_CERT_CHAIN=$(/vault/vault read -field=value $VAULT_PATH/ssl_cert_chain)
+SSL_KEY=$(aws ssm get-parameters --names $PS_PATH.ssl_key --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+SSL_CERT_CHAIN1=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain1 --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+SSL_CERT_CHAIN2=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain2 --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+SSL_CERT_CHAIN3=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain3 --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+
+SSL_CERT_CHAIN="$SSL_CERT_CHAIN1$SSL_CERT_CHAIN2$SSL_CERT_CHAIN3"
 
 echo $SSL_KEY | base64 -d >> /etc/nginx/ssl/server.key
 echo $SSL_CERT_CHAIN | base64 -d >> /etc/nginx/ssl/server.crt
