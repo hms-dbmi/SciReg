@@ -16,6 +16,7 @@ import base64
 from os.path import normpath, join, dirname, abspath
 from django.utils.crypto import get_random_string
 from django.contrib.messages import constants as message_constants
+from pythonpstore.pythonpstore import SecretStore
 import sys
 
 chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
@@ -32,6 +33,10 @@ EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
+
+secret_store = SecretStore()
+PARAMETER_PATH = os.environ.get("PS_PATH", "")
+ALLOWED_HOSTS = [secret_store.get_secret_for_key(PARAMETER_PATH + '.allowed_hosts')]
 
 # Set the message level.
 MESSAGE_LEVEL = message_constants.INFO
@@ -141,7 +146,6 @@ AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 LOGIN_URL = '/login/'
 
 AUTHENTICATION_LOGIN_URL = os.environ.get("AUTHENTICATION_LOGIN_URL")
-print("AUTHENTICATION_LOGIN_URL %s " % AUTHENTICATION_LOGIN_URL)
 
 AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
