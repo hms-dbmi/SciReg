@@ -36,12 +36,7 @@ DEBUG = False
 
 secret_store = SecretStore()
 PARAMETER_PATH = os.environ.get("PS_PATH", "")
-
-print("Path %s" % PARAMETER_PATH)
-
 ALLOWED_HOSTS = [secret_store.get_secret_for_key(PARAMETER_PATH + '.allowed_hosts')]
-
-print("ALLOWED_HOSTS %s" % ALLOWED_HOSTS)
 
 # Set the message level.
 MESSAGE_LEVEL = message_constants.INFO
@@ -154,7 +149,6 @@ AUTHENTICATION_LOGIN_URL = os.environ.get("AUTHENTICATION_LOGIN_URL")
 
 AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
 
-ALLOWED_HOSTS = ['.dbmi.hms.harvard.edu']
 COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN")
 
 EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
