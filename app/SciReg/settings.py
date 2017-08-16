@@ -36,7 +36,12 @@ DEBUG = False
 
 secret_store = SecretStore()
 PARAMETER_PATH = os.environ.get("PS_PATH", "")
+
+print("Path %s" % PARAMETER_PATH)
+
 ALLOWED_HOSTS = [secret_store.get_secret_for_key(PARAMETER_PATH + '.allowed_hosts')]
+
+print("ALLOWED_HOSTS %s" % ALLOWED_HOSTS)
 
 # Set the message level.
 MESSAGE_LEVEL = message_constants.INFO
