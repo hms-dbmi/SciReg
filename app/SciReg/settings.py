@@ -36,7 +36,13 @@ DEBUG = False
 
 secret_store = SecretStore()
 PARAMETER_PATH = os.environ.get("PS_PATH", "")
-ALLOWED_HOSTS = [secret_store.get_secret_for_key(PARAMETER_PATH + '.allowed_hosts')]
+
+if PARAMETER_PATH:
+    ALLOWED_HOSTS = [secret_store.get_secret_for_key(PARAMETER_PATH + '.allowed_hosts')]
+    RAVEN_URL = secret_store.get_secret_for_key(PARAMETER_PATH + '.raven_url')
+else:
+    ALLOWED_HOSTS = ["localhost"]
+    RAVEN_URL = ""
 
 # Set the message level.
 MESSAGE_LEVEL = message_constants.INFO
@@ -53,7 +59,8 @@ INSTALLED_APPS = [
     'registration',
     'rest_framework',
     'pyauth0jwt',
-    'pyauth0jwtrest'
+    'pyauth0jwtrest',
+    'raven.contrib.django.raven_compat',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -209,6 +216,13 @@ BOOTSTRAP3 = {
 
     # Include jQuery with Bootstrap JavaScript (affects django-bootstrap3 template tags)
     'include_jquery': True,
+}
+
+RAVEN_CONFIG = {
+    'dsn': RAVEN_URL,
+    # If you are using git, you can also automatically configure the
+    # release based on the git info.
+    'release': '1',
 }
 
 #########

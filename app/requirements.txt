@@ -13,4 +13,5 @@ py-auth0-jwt-rest==0.1
 pycrypto==2.6.1
 PyJWT==1.4.2
 python-pstore==0.8
+raven==6.1.0
 requests==2.11.1
