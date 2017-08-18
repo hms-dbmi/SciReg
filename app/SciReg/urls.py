@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.views.defaults import page_not_found
 from pyauth0jwt.auth0authenticate import jwt_login
 from registration.views import RegistrationViewSet, UserViewSet
+from .views import ht
 
 from rest_framework import routers
 router = routers.DefaultRouter()
@@ -15,5 +16,6 @@ urlpatterns = [
     url(r'^registration/', include('registration.urls')),
     url(r'^login/$', jwt_login),
     url(r'^api/', include(router.urls)),
+    url(r'^ht/', ht),
     url(r'^', include("registration.urls")),
 ]
