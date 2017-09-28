@@ -150,7 +150,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
         logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url)
 
-        email_send("Harvard Medical School - E-Mail Verification", [user.email],
+        email_send("People-Powered Medicine - E-Mail Verification", [user.email],
                    message="verify",
                    extra={"confirm_url": confirm_url, "user_email": user.email})
 
