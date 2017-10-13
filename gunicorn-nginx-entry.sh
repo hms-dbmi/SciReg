@@ -2,6 +2,8 @@
 
 SECRET_KEY=$(aws ssm get-parameters --names $PS_PATH.django_secret --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 
+ALLOWED_HOSTS=$(aws ssm get-parameters --names $PS_PATH.allowed_hosts --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+
 AUTH0_DOMAIN=$(aws ssm get-parameters --names $PS_PATH.auth0_domain --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 AUTH0_CLIENT_ID_VAULT=$(aws ssm get-parameters --names $PS_PATH.auth0_client_id --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 AUTH0_SECRET_VAULT=$(aws ssm get-parameters --names $PS_PATH.auth0_secret --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
@@ -22,7 +24,10 @@ MYSQL_PASSWORD_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_pw --with-d
 MYSQL_HOST_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_host --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 MYSQL_PORT_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_port --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 
+RAVEN_URL=$(aws ssm get-parameters --names $PS_PATH.raven_url --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+
 export SECRET_KEY
+export ALLOWED_HOSTS
 export AUTH0_DOMAIN
 export AUTH0_CLIENT_ID=$AUTH0_CLIENT_ID_VAULT
 export AUTH0_SECRET=$AUTH0_SECRET_VAULT
@@ -42,6 +47,8 @@ export EMAIL_HOST
 export EMAIL_HOST_USER
 export EMAIL_HOST_PASSWORD
 export EMAIL_PORT
+
+export RAVEN_URL
 
 SSL_KEY=$(aws ssm get-parameters --names $PS_PATH.ssl_key --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 SSL_CERT_CHAIN1=$(aws ssm get-parameters --names $PS_PATH.ssl_cert_chain1 --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
