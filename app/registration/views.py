@@ -74,13 +74,14 @@ def email_confirm(request, template_name='registration/confirmed.html'):
     user = request.user
 
     success_url = None
+    state = {'task': 'email_confirm'}
     try:
+        # Get the success url.
+        success_url = base64.urlsafe_b64decode(request.GET.get('success_url').encode('utf-8')).decode('utf-8')
+
         # Get the email confirm data.
         email_confirm_value = base64.urlsafe_b64decode(request.GET.get('email_confirm_value', '---').encode('utf-8')).decode('utf-8')
         email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
-
-        # Get the success url.
-        success_url = base64.urlsafe_b64decode(request.GET.get('success_url').encode('utf-8')).decode('utf-8')
 
         # Verify the code.
         signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
@@ -94,26 +95,51 @@ def email_confirm(request, template_name='registration/confirmed.html'):
         registration.email_confirmed = True
         registration.save()
 
-        # Set a message.
-        messages.success(request, 'Email has been confirmed.',
-                         extra_tags='success', fail_silently=True)
+        # Save the state of the task
+        state.update({
+            'state': 'success',
+            'message': 'Your email has been confirmed!',
+        })
 
-        # Continue on to the next page, if passed. Otherwise render a default page.
-        if success_url:
-            return redirect(success_url)
+        # Set a message.
+        messages.success(request, state['message'], extra_tags='success', fail_silently=True)
 
     except SignatureExpired as e:
         logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
-        messages.error(request, 'This email confirmation code has expired, please try again.',
-                       extra_tags='danger', fail_silently=True)
+        state.update({
+            'state': 'failed',
+            'message': 'This email confirmation code has expired, please try again.',
+        })
+
+        # Set a message.
+        messages.error(request, state['message'], extra_tags='danger', fail_silently=True)
 
     except Exception as e:
         logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
-        messages.error(request, 'This email confirmation code is invalid, please try again.',
-                       extra_tags='danger', fail_silently=True)
+        state.update({
+            'state': 'failed',
+            'message': 'This email confirmation code is invalid, please try again.',
+        })
 
-    # Send them to a default URL
-    return render(request, template_name)
+        # Set a message.
+        messages.error(request, state['message'], extra_tags='danger', fail_silently=True)
+
+    # Check for success URL.
+    if success_url:
+
+        # Build the URL.
+        url = furl.furl(success_url)
+
+        # Add the state.
+        url.args.update(state)
+
+        # Continue on to the next page, if passed. Otherwise render a default page.
+        return redirect(url.url)
+
+    else:
+
+        # Send them to a default URL
+        return render(request, template_name)
 
 
 class RegistrationViewSet(viewsets.ModelViewSet):
