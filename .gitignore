@@ -4,3 +4,5 @@ debug.log
 error.log
 .DS_Store
 *local_settings.py
+app/assets
+*.patch

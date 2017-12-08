@@ -18,9 +18,10 @@ from pyauth0jwt.auth0authenticate import user_auth_and_jwt
 from django.core.mail import EmailMultiAlternatives
 from socket import gaierror
 import sys
-
+import furl
 import jwt
 import base64
+import json
 
 import logging
 logger = logging.getLogger(__name__)
@@ -72,13 +73,18 @@ def access(request, template_name='registration/access.html'):
 def email_confirm(request, template_name='registration/confirmed.html'):
     user = request.user
 
-    email_confirm_value = request.GET.get('email_confirm_value', '-')
-    email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
-    success_url = request.GET.get('success_url', None)
-
-    signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
-
+    success_url = None
+    state = {'task': 'email_confirm'}
     try:
+        # Get the success url.
+        success_url = base64.urlsafe_b64decode(request.GET.get('success_url').encode('utf-8')).decode('utf-8')
+
+        # Get the email confirm data.
+        email_confirm_value = base64.urlsafe_b64decode(request.GET.get('email_confirm_value', '---').encode('utf-8')).decode('utf-8')
+        email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
+
+        # Verify the code.
+        signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
         signer.unsign(email_confirm_value, max_age=timedelta(seconds=300))
         registration, created = Registration.objects.get_or_create(user_id=user.id)
 
@@ -89,22 +95,50 @@ def email_confirm(request, template_name='registration/confirmed.html'):
         registration.email_confirmed = True
         registration.save()
 
+        # Save the state of the task
+        state.update({
+            'state': 'success',
+            'message': 'Your email has been confirmed!',
+        })
+
         # Set a message.
-        messages.success(request, 'Email has been confirmed.',
-                         extra_tags='success', fail_silently=True)
+        messages.success(request, state['message'], extra_tags='success', fail_silently=True)
 
-    except SignatureExpired:
-        messages.error(request, 'This email confirmation code has expired, please try again.',
-                       extra_tags='danger', fail_silently=True)
+    except SignatureExpired as e:
+        logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
+        state.update({
+            'state': 'failed',
+            'message': 'This email confirmation code has expired, please try again.',
+        })
 
-    except BadSignature:
-        messages.error(request, 'This email confirmation code is invalid, please try again.',
-                       extra_tags='danger', fail_silently=True)
+        # Set a message.
+        messages.error(request, state['message'], extra_tags='danger', fail_silently=True)
 
-    # Continue on to the next page, if passed. Otherwise render a default page.
+    except Exception as e:
+        logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
+        state.update({
+            'state': 'failed',
+            'message': 'This email confirmation code is invalid, please try again.',
+        })
+
+        # Set a message.
+        messages.error(request, state['message'], extra_tags='danger', fail_silently=True)
+
+    # Check for success URL.
     if success_url:
-        return redirect(success_url)
+
+        # Build the URL.
+        url = furl.furl(success_url)
+
+        # Add the state.
+        url.args.update(state)
+
+        # Continue on to the next page, if passed. Otherwise render a default page.
+        return redirect(url.url)
+
     else:
+
+        # Send them to a default URL
         return render(request, template_name)
 
 
@@ -128,31 +162,33 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     @list_route(methods=['post'])
     def send_confirmation_email(self, request):
         user = request.user
-        success_url = request.data.get('success_url', None)
 
+        # Store the data to be passed for verification.
+        email_confirm_dict = {}
+
+        # Build the email verification code and b64 encode it.
         signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
         signed_value = signer.sign(user.email)
-
         signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
 
-        # Build the link URL then just break it all up.
-        confirm_url = settings.CONFIRM_EMAIL_URL + signed_value
-        confirm_url_parts = list(parse.urlparse(confirm_url))
-        confirm_url_query = dict(parse.parse_qsl(confirm_url_parts[4]))
+        email_confirm_dict['email_confirm_value'] = base64.urlsafe_b64encode(bytes(signed_value, 'utf-8')).decode('utf-8')
 
-        # Add needed key-value pairs to the request.
+        # Check for a success url and b64 encode it.
+        success_url = request.data.get('success_url')
         if success_url:
-            confirm_url_query.update({'success_url': success_url})
+            email_confirm_dict['success_url'] = base64.urlsafe_b64encode(bytes(success_url, 'utf-8')).decode('utf-8')
 
-        # Join everything back together.
-        confirm_url_parts[4] = parse.urlencode(confirm_url_query)
-        confirm_url = parse.urlunparse(confirm_url_parts)
+        # Build the URL.
+        confirm_url = furl.furl(settings.CONFIRM_EMAIL_URL)
 
-        logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url)
+        # Add the parameters.
+        confirm_url.args.update(email_confirm_dict)
+
+        logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url.url)
 
         email_send("People-Powered Medicine - E-Mail Verification", [user.email],
                    message="verify",
-                   extra={"confirm_url": confirm_url, "user_email": user.email})
+                   extra={"confirm_url": confirm_url.url, "user_email": user.email})
 
         return HttpResponse("SENT")
 
@@ -182,7 +218,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 def email_send(subject=None, recipients=None, message=None, extra=None):
     """
-    Send an e-mail to a list of participants with the given subject and message. 
+    Send an e-mail to a list of participants with the given subject and message.
     Extra is dictionary of variables to be swapped into the template.
     """
     for r in recipients:
