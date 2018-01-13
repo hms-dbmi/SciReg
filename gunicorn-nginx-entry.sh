@@ -26,6 +26,8 @@ MYSQL_PORT_VAULT=$(aws ssm get-parameters --names $PS_PATH.mysql_port --with-dec
 
 RAVEN_URL=$(aws ssm get-parameters --names $PS_PATH.raven_url --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
 
+export SCIAUTHZ_URL=$(aws ssm get-parameters --names $PS_PATH.sciauthz_url --with-decryption --region us-east-1 | jq -r '.Parameters[].Value')
+
 export SECRET_KEY
 export ALLOWED_HOSTS
 export AUTH0_DOMAIN

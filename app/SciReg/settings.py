@@ -143,6 +143,8 @@ AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 
 LOGIN_URL = '/login/'
 
+SCIAUTHZ_URL = os.environ.get("SCIAUTHZ_URL")
+
 AUTHENTICATION_LOGIN_URL = os.environ.get("AUTHENTICATION_LOGIN_URL")
 
 AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
