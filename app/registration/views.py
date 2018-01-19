@@ -22,6 +22,9 @@ import furl
 import jwt
 import base64
 import json
+import requests
+
+from SciReg import sciauthz_services
 
 import logging
 logger = logging.getLogger(__name__)
@@ -186,9 +189,57 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
         logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url.url)
 
-        email_send("People-Powered Medicine - E-Mail Verification", [user.email],
-                   message="verify",
-                   extra={"confirm_url": confirm_url.url, "user_email": user.email})
+        # Check for a project id.
+        project_id = request.data.get('project', None)
+        if project_id is not None:
+
+            try:
+                # Query authz for the project details.
+                response = sciauthz_services.get_sciauthz_project(project_id)
+                project = response.json()
+
+                # Get the project title and other info
+                project_title = project.get('title', 'Harvard Medical School')
+                project_icon_url = project.get('icon_url', 'https://hms.harvard.edu/sites/all/themes/hms/logo.png')
+
+                # Add the title and description to the context.
+                context = {
+                    "confirm_url": confirm_url.url,
+                    "user_email": user.email,
+                    'project': project_id,
+                    'project_title': project_title,
+                    'project_description': project.get('description', None),
+                    'project_icon_url': project_icon_url
+                }
+
+                email_send("{} - E-Mail Verification".format(project_title), [user.email],
+                           message="verification",
+                           extra=context)
+
+            except (requests.ConnectionError, ValueError):
+
+                logger.error("[SCIAUTH][ERROR][auth] - SciAuthZ project lookup failed")
+
+                # This is a default email verification context with HMS branding
+                context = {
+                    "confirm_url": confirm_url.url,
+                    "user_email": user.email,
+                    'project_title': 'Harvard Medical School',
+                    'project_icon_url': 'https://hms.harvard.edu/sites/all/themes/hms/logo.png'
+                }
+
+                email_send("Harvard Medical School - E-Mail Verification", [user.email],
+                           message="verification",
+                           extra=context)
+
+        else:
+            logger.debug("[SCIAUTH][DEBUG][auth] - No project identifier passed")
+
+            # TODO: Eliminate below, only using PPM branding until SciAuthZ is setup
+            email_send("People-Powered Medicine - E-Mail Verification", [user.email],
+                       message="verify",
+                       extra={"confirm_url": confirm_url.url, "user_email": user.email})
+            # TODO: Eliminate the above
 
         return HttpResponse("SENT")
 
