@@ -79,7 +79,7 @@ def email_confirm(request, template_name='registration/confirmed.html'):
     signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
 
     try:
-        signer.unsign(email_confirm_value, max_age=timedelta(seconds=300))
+        signer.unsign(email_confirm_value, max_age=timedelta(seconds=172800))
         registration, created = Registration.objects.get_or_create(user_id=user.id)
 
         # If this is a new registration make sure we at least save the email/username.
