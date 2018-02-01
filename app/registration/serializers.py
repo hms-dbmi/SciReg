@@ -24,4 +24,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
                   'zipcode',
                   'phone_number',
                   'twitter_handle',
-                  'email_confirmed')
+                  'email_confirmed',
+                  'professional_title',
+                  'affiliation_type',
+                  'institution',
+                  'alternate_email')
