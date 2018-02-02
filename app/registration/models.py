@@ -1,4 +1,5 @@
 from django.db import models
+from django_countries.fields import CountryField
 
 # Users are linked to a registration.
 from django.contrib.auth.models import User
@@ -32,6 +33,7 @@ class Registration(models.Model):
     city = models.CharField(max_length=255, blank=True, null=True, verbose_name="City")
     state = models.CharField(max_length=255, blank=True, null=True, verbose_name="State")
     zipcode = models.CharField(max_length=255, blank=True, null=True, verbose_name="Zip")
+    country = CountryField(blank=True, null=True)
     phone_number = models.CharField(max_length=255, blank=True, null=True, verbose_name="Phone Number")
 
     affiliation_type = models.CharField(max_length=20, blank=True, null=True, verbose_name="Affiliation Type", choices=AFFILIATION_CHOICES, default=ACADEMIC)
