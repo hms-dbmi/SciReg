@@ -36,7 +36,7 @@ class Registration(models.Model):
     country = CountryField(blank=True, null=True)
     phone_number = models.CharField(max_length=255, blank=True, null=True, verbose_name="Phone Number")
 
-    affiliation_type = models.CharField(max_length=20, blank=True, null=True, verbose_name="Affiliation Type", choices=AFFILIATION_CHOICES, default=ACADEMIC)
+    affiliation_type = models.CharField(max_length=20, blank=True, null=True, verbose_name="Affiliation Type", choices=AFFILIATION_CHOICES, default=NONE)
     professional_title = models.CharField(max_length=255, blank=True, null=True, verbose_name="Professional Title")
     institution = models.CharField(max_length=255, blank=True, null=True, verbose_name="Institution")
 
