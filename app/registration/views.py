@@ -159,8 +159,13 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             serializer.save(user=user, email=user.email)
 
     def get_queryset(self):
-        user = self.request.user
-        return Registration.objects.filter(user=user)
+        requested_user = self.request.query_params.get('email', None)
+        requesting_user = self.request.user
+
+        if requested_user is not None:
+            return Registration.objects.filter(user__email__iexact=requested_user)
+        else:
+            return Registration.objects.filter(user=requesting_user)
 
     @list_route(methods=['post'])
     def send_confirmation_email(self, request):
