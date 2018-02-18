@@ -23,6 +23,7 @@ import jwt
 import base64
 import json
 import requests
+from django.http import HttpResponseForbidden
 
 from SciReg import sciauthz_services
 
@@ -159,11 +160,27 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             serializer.save(user=user, email=user.email)
 
     def get_queryset(self):
+
+        logger.debug("[SCIREG][DEBUG][RegistrationViewSet] - Getting user Profile.")
+
         requested_user = self.request.query_params.get('email', None)
+        project = self.request.query_params.get('project', None)
         requesting_user = self.request.user
 
         if requested_user is not None:
-            return Registration.objects.filter(user__email__iexact=requested_user)
+            # If you're trying to get another users profile, you need the manage permission.
+            if requesting_user != requested_user:
+                logger.debug("[SCIREG][DEBUG][RegistrationViewSet] - Requested other users profile.")
+
+                view_others_permission = sciauthz_services.check_view_profile_permission(self.request.auth, project, requested_user)
+
+                if view_others_permission:
+                    return Registration.objects.filter(user__email__iexact=requested_user)
+                else:
+                    return HttpResponseForbidden()
+            else:
+                return Registration.objects.filter(user=requesting_user)
+
         else:
             return Registration.objects.filter(user=requesting_user)
 
