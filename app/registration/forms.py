@@ -4,7 +4,6 @@ from registration.models import Registration
 
 ACADEMIC = 'AC'
 INDUSTRY = 'IN'
-NONE = ''
 
 SOFTWARE = 'SF'
 DATA = 'DT'
@@ -12,8 +11,7 @@ TECHNICAL_GUIDANCE = 'TG'
 
 AFFILIATION_CHOICES = (
     (ACADEMIC, 'Academic'),
-    (INDUSTRY, 'Industry'),
-    (NONE, 'None')
+    (INDUSTRY, 'Industry')
 )
 
 DBMI_INTERESTS_CHOICES = (

@@ -16,6 +16,7 @@ import base64
 from os.path import normpath, join, dirname, abspath
 from django.utils.crypto import get_random_string
 from django.contrib.messages import constants as message_constants
+from pythonpstore.pythonpstore import SecretStore
 import sys
 
 chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
@@ -33,7 +34,15 @@ EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = [os.environ.get("ALLOWED_HOSTS")]
+secret_store = SecretStore()
+PARAMETER_PATH = os.environ.get("PS_PATH", "")
+
+if PARAMETER_PATH:
+    ALLOWED_HOSTS = [secret_store.get_secret_for_key(PARAMETER_PATH + '.allowed_hosts')]
+    RAVEN_URL = secret_store.get_secret_for_key(PARAMETER_PATH + '.raven_url')
+else:
+    ALLOWED_HOSTS = ["localhost"]
+    RAVEN_URL = ""
 
 # Set the message level.
 MESSAGE_LEVEL = message_constants.INFO
@@ -143,8 +152,6 @@ AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 
 LOGIN_URL = '/login/'
 
-SCIAUTHZ_URL = os.environ.get("SCIAUTHZ_URL")
-
 AUTHENTICATION_LOGIN_URL = os.environ.get("AUTHENTICATION_LOGIN_URL")
 
 AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', 'django.contrib.auth.backends.ModelBackend')
@@ -159,7 +166,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = os.environ.get("EMAIL_PORT")
 
 CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
-DEFAULT_FROM_EMAIL = "registration-no-reply@dbmi.hms.harvard.edu"
+DEFAULT_FROM_EMAIL = "ppm-no-reply@dbmi.hms.harvard.edu"
 
 LOGGING = {
     'version': 1,
@@ -212,7 +219,7 @@ BOOTSTRAP3 = {
 }
 
 RAVEN_CONFIG = {
-    'dsn': os.environ.get("RAVEN_URL"),
+    'dsn': RAVEN_URL,
     # If you are using git, you can also automatically configure the
     # release based on the git info.
     'release': '1',
