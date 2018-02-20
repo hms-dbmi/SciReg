@@ -14,7 +14,7 @@ def get_sciauthz_project(project):
 
     logger.debug("[SCIREG][DEBUG][sciauthz_services] - Request project info for: " + project)
 
-    f = furl(settings.SCIAUTHZ_URL)
+    f = furl(settings.PERMISSION_SERVER_URL)
     f.path.add('project')
 
     data = {'project': project}
@@ -32,7 +32,7 @@ def get_sciauthz_project(project):
 def user_has_manage_permission(jwt_headers, project):
     is_manager = False
 
-    f = furl(settings.SCIAUTHZ_URL)
+    f = furl(settings.PERMISSION_SERVER_URL)
     f.path.add('user_permission/')
 
     f.args["item"] = project
@@ -42,6 +42,8 @@ def user_has_manage_permission(jwt_headers, project):
     except JSONDecodeError:
         user_permissions = None
         logger.debug("[SCIREG][DEBUG][user_has_manage_permission] - No Valid permissions returned.")
+    except Exception as e:
+        logger.debug("SCIREG][DEBUG][user_has_manage_permission] - " + e)
 
     if user_permissions is not None and 'results' in user_permissions:
         for perm in user_permissions['results']:
@@ -53,7 +55,7 @@ def user_has_manage_permission(jwt_headers, project):
 
 def user_has_single_profile_view_permission(jwt_headers, project, email):
 
-    f = furl(settings.SCIAUTHZ_URL)
+    f = furl(settings.PERMISSION_SERVER_URL)
     f.path.add('user_permission/')
 
     f.args["item"] = "SciReg.%s.profile.%s" % (project, email)
