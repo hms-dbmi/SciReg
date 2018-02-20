@@ -228,7 +228,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
                 # Get the project title and other info
                 project_title = project.get('title', 'Harvard Medical School Department of Biomedical Informatics')
-                project_icon_url = project.get('icon_url', os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                project_icon_url = project.get(project.get('icon_url', 'https://portal.aws.dbmi-dev.hms.harvard.edu/static/hms_dbmi_logo.png'))
 
                 # Add the title and description to the context.
                 context = {
@@ -248,24 +248,12 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
                 logger.error("[SCIAUTH][ERROR][auth] - SciAuthZ project lookup failed")
 
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
-
                 # This is a default email verification context with HMS branding
                 context = {
                     "confirm_url": confirm_url.url,
                     "user_email": user.email,
                     'project_title': 'Harvard Medical School Department of Biomedical Informatics',
-                    'project_icon_url': os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png')
+                    'project_icon_url': 'https://portal.aws.dbmi-dev.hms.harvard.edu/static/hms_dbmi_logo.png'
                 }
 
                 email_send("Harvard Medical School - E-Mail Verification", [user.email],
