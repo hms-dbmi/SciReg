@@ -26,3 +26,4 @@ AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
 # Django config, move this to an ENV in the future
 ALLOWED_HOSTS = ['registration.aws.dbmi.hms.harvard.edu']
 ~~~
+
