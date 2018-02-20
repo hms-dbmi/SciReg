@@ -1,16 +1,21 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render
+from django.shortcuts import redirect
 from django.contrib import messages
 from .forms import ProfileForm
 from urllib import parse
 from registration.models import Registration
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets
+from rest_framework import permissions
 from rest_framework.decorators import list_route
-from registration.serializers import RegistrationSerializer, UserSerializer
+from registration.serializers import RegistrationSerializer
+from registration.serializers import UserSerializer
 from registration.permissions import IsAssociatedUser
 from rest_framework.permissions import AllowAny
 from django.template.loader import render_to_string
 from django.conf import settings
-from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
+from django.core.signing import TimestampSigner
+from django.core.signing import SignatureExpired
+from django.core.signing import BadSignature
 from datetime import timedelta
 from django.http import HttpResponse
 from django.contrib.auth.models import User
@@ -23,6 +28,7 @@ import jwt
 import base64
 import json
 import requests
+from os.path import normpath, join, dirname, abspath
 from django.http import HttpResponseForbidden
 
 from SciReg import sciauthz_services
@@ -221,8 +227,8 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                 project = response.json()
 
                 # Get the project title and other info
-                project_title = project.get('title', 'Harvard Medical School')
-                project_icon_url = project.get('icon_url', 'https://hms.harvard.edu/sites/all/themes/hms/logo.png')
+                project_title = project.get('title', 'Harvard Medical School Department of Biomedical Informatics')
+                project_icon_url = project.get('icon_url', os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
 
                 # Add the title and description to the context.
                 context = {
@@ -242,12 +248,24 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
                 logger.error("[SCIAUTH][ERROR][auth] - SciAuthZ project lookup failed")
 
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+                logger.debug(os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png'))
+
                 # This is a default email verification context with HMS branding
                 context = {
                     "confirm_url": confirm_url.url,
                     "user_email": user.email,
-                    'project_title': 'Harvard Medical School',
-                    'project_icon_url': 'https://hms.harvard.edu/sites/all/themes/hms/logo.png'
+                    'project_title': 'Harvard Medical School Department of Biomedical Informatics',
+                    'project_icon_url': os.path.join(settings.STATIC_ROOT + '/dbmi_logo.png')
                 }
 
                 email_send("Harvard Medical School - E-Mail Verification", [user.email],
