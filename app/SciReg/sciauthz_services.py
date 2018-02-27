@@ -67,7 +67,7 @@ def user_has_single_profile_view_permission(jwt_headers, project, email):
         user_permissions = {"count":0}
 
     if user_permissions["count"] > 0:
-        return user_permissions["results"][0]["permissions"] == "VIEW"
+        return user_permissions["results"][0]["permission"] == "VIEW"
     else:
         return False
 
