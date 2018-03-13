@@ -17,6 +17,7 @@ from os.path import normpath, join, dirname, abspath
 from django.utils.crypto import get_random_string
 from django.contrib.messages import constants as message_constants
 import sys
+from SciReg import environment
 
 chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
 
@@ -31,12 +32,12 @@ SECRET_KEY = os.environ.get("SECRET_KEY", get_random_string(50, chars))
 EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = environment.ENV_BOOL("DJANGO_DEBUG", False)
 
-ALLOWED_HOSTS = [os.environ.get("ALLOWED_HOSTS")]
+ALLOWED_HOSTS = environment.ENV_LIST("ALLOWED_HOSTS")
 
-# Set the message level.
-MESSAGE_LEVEL = message_constants.INFO
+# Set the message level
+MESSAGE_LEVEL = message_constants.INFO if not DEBUG else message_constants.DEBUG
 
 # Application definition
 INSTALLED_APPS = [
@@ -152,8 +153,9 @@ AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', '
 
 COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN")
 
-EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
-EMAIL_USE_SSL = True
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", 'django_smtp_ssl.SSLEmailBackend')
+EMAIL_USE_SSL = EMAIL_BACKEND == 'django_smtp_ssl.SSLEmailBackend'
+
 EMAIL_HOST = os.environ.get("EMAIL_HOST")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
