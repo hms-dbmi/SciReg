@@ -86,11 +86,19 @@ def email_confirm(request, template_name='registration/confirmed.html'):
     success_url = None
     state = {'task': 'email_confirm'}
     try:
+        # Get the email confirm data
+        email_confirm_json = base64.urlsafe_b64decode(request.GET.get('email_confirm_value').encode('utf-8')).decode('utf-8')
+        email_confirm_dict = json.loads(email_confirm_json)
+
+        logger.debug('Email confirmation data: {}'.format(email_confirm_json))
+
         # Get the success url.
-        success_url = base64.urlsafe_b64decode(request.GET.get('success_url').encode('utf-8')).decode('utf-8')
+        success_url = email_confirm_dict.get('success_url')
+
+        logger.debug('Email confirmation success URL: {}'.format(success_url))
 
         # Get the email confirm data.
-        email_confirm_value = base64.urlsafe_b64decode(request.GET.get('email_confirm_value', '---').encode('utf-8')).decode('utf-8')
+        email_confirm_value = email_confirm_dict.get('email_confirm_value', '---')
         email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
 
         # Verify the code.
@@ -194,28 +202,39 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     def send_confirmation_email(self, request):
         user = request.user
 
-        # Store the data to be passed for verification.
-        email_confirm_dict = {}
-
-        # Build the email verification code and b64 encode it.
-        signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
-        signed_value = signer.sign(user.email)
-        signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
-
-        email_confirm_dict['email_confirm_value'] = base64.urlsafe_b64encode(bytes(signed_value, 'utf-8')).decode('utf-8')
-
-        # Check for a success url and b64 encode it.
-        success_url = request.data.get('success_url')
-        if success_url:
-            email_confirm_dict['success_url'] = base64.urlsafe_b64encode(bytes(success_url, 'utf-8')).decode('utf-8')
-
         # Build the URL.
         confirm_url = furl.furl(settings.CONFIRM_EMAIL_URL)
 
-        # Add the parameters.
-        confirm_url.args.update(email_confirm_dict)
+        try:
+            # Store the data to be passed for verification.
+            email_confirm_dict = {}
 
-        logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url.url)
+            # Build the email verification code and b64 encode it.
+            signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
+            signed_value = signer.sign(user.email)
+            signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
+
+            email_confirm_dict['email_confirm_value'] = signed_value
+
+            # Check for a success url and b64 encode it.
+            success_url = request.data.get('success_url')
+            if success_url:
+                logger.debug('Sending email confirmation with success URL: {}'.format(success_url))
+                email_confirm_dict['success_url'] = success_url
+
+            # Deserialize and encode the JSON string
+            email_confirm_json = json.dumps(email_confirm_dict)
+            logger.debug('Sending email confirmation JSON: {}'.format(email_confirm_json))
+            email_confirm_parameter = base64.urlsafe_b64encode(bytes(email_confirm_json, 'utf-8')).decode('utf-8')
+
+            # Add the parameters.
+            confirm_url.query.params.set('email_confirm_value', email_confirm_parameter)
+
+        except Exception as e:
+            logger.exception(e)
+            return HttpResponse(status=500)
+
+        logger.debug('Sending email confirmation URL: {}'.format(confirm_url.url))
 
         # Check for a project id.
         project_id = request.data.get('project', None)
@@ -240,13 +259,13 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                     'project_icon_url': project_icon_url
                 }
 
-                email_send("{} - E-Mail Verification".format(project_title), [user.email],
+                sent = email_send("{} - E-Mail Verification".format(project_title), user.email,
                            message="verification",
                            extra=context)
 
-            except (requests.ConnectionError, ValueError):
-
-                logger.error("[SCIAUTH][ERROR][auth] - SciAuthZ project lookup failed")
+            except (requests.ConnectionError, ValueError) as e:
+                logger.exception(e)
+                logger.debug('Sending email confirmation with default HMS branding')
 
                 # This is a default email verification context with HMS branding
                 context = {
@@ -256,7 +275,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                     'project_icon_url': 'https://portal.dbmi.hms.harvard.edu/static/hms_dbmi_logo.png'
                 }
 
-                email_send("Harvard Medical School - E-Mail Verification", [user.email],
+                sent = email_send("Harvard Medical School - E-Mail Verification", user.email,
                            message="verification",
                            extra=context)
 
@@ -264,12 +283,17 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             logger.debug("[SCIAUTH][DEBUG][auth] - No project identifier passed")
 
             # TODO: Eliminate below, only using PPM branding until SciAuthZ is setup
-            email_send("People-Powered Medicine - E-Mail Verification", [user.email],
+            sent = email_send("People-Powered Medicine - E-Mail Verification", user.email,
                        message="verify",
                        extra={"confirm_url": confirm_url.url, "user_email": user.email})
             # TODO: Eliminate the above
 
-        return HttpResponse("SENT")
+        # Check the result
+        logger.debug('Sending email confirmation was sent: {}'.format(sent))
+        if sent:
+            return HttpResponse("SENT")
+        else:
+            return HttpResponse(status=500)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -295,25 +319,31 @@ class UserViewSet(viewsets.ModelViewSet):
             return user
 
 
-def email_send(subject=None, recipients=None, message=None, extra=None):
+def email_send(subject, recipient, message, extra=None):
     """
     Send an e-mail to a list of participants with the given subject and message.
     Extra is dictionary of variables to be swapped into the template.
     """
-    for r in recipients:
-        msg_html = render_to_string('email/%s.html' % message, extra)
-        msg_plain = render_to_string('email/%s.txt' % message, extra)
 
-        logger.info("[SCIREG][DEBUG][email_send] About to send e-mail to %s" % r)
+    logger.debug('Email backend: {}'.format(settings.EMAIL_BACKEND))
+    logger.debug('Email SSL: {}'.format(settings.EMAIL_USE_SSL))
 
-        try:
-            msg = EmailMultiAlternatives(subject, msg_plain, settings.DEFAULT_FROM_EMAIL, [r])
-            msg.attach_alternative(msg_html, "text/html")
-            msg.send()
-        except gaierror:
-            logger.error("[SCIREG][DEBUG][email_send] Could not send mail! Possible bad server connection.")
-        except:
-            print(sys.exc_info()[0])
+    msg_html = render_to_string('email/%s.html' % message, extra)
+    msg_plain = render_to_string('email/%s.txt' % message, extra)
 
-        logger.info("[SCIREG][DEBUG][email_send] E-Mail Success!")
+    logger.info("About to send email to %s" % recipient)
 
+    try:
+        msg = EmailMultiAlternatives(subject, msg_plain, settings.DEFAULT_FROM_EMAIL, [recipient])
+        msg.attach_alternative(msg_html, "text/html")
+        msg.send()
+        logger.info("Email sent successfully")
+        return True
+
+    except gaierror as e:
+        logger.error("Could not send mail: {}".format(e))
+    except Exception as e:
+        logger.error("Could not send mail: {}".format(e))
+        print(sys.exc_info()[0])
+
+    return False
