@@ -63,7 +63,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'SciReg.middlewares.LogSetupMiddleware',
+    'SciReg.logging.LogSetupMiddleware',
 ]
 
 ROOT_URLCONF = 'SciReg.urls'
@@ -174,7 +174,7 @@ LOGGING = {
     'filters': {
         # Add an unbound RequestFilter.
         'request': {
-            '()': 'SciReg.middlewares.RequestFilter',
+            '()': 'SciReg.logging.RequestFilter',
         },
     },
     'handlers': {
