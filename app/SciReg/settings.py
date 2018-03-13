@@ -168,7 +168,8 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'console': {
-            'format': '[%(asctime)s][%(levelname)s][%(name)s.%(funcName)s][%(username)s][%(userid)s] - %(message)s',
+            'format': '[%(asctime)s][%(levelname)s][%(name)s.%(funcName)s:%(lineno)d]'
+                      '[%(username)s][%(userid)s] - %(message)s',
         },
     },
     'filters': {
