@@ -62,7 +62,8 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware'
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'SciReg.middlewares.LogSetupMiddleware',
 ]
 
 ROOT_URLCONF = 'SciReg.urls'
@@ -161,33 +162,55 @@ EMAIL_PORT = os.environ.get("EMAIL_PORT")
 CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
 DEFAULT_FROM_EMAIL = "registration-no-reply@dbmi.hms.harvard.edu"
 
+# Configure logging
 LOGGING = {
     'version': 1,
-    'handlers': {
+    'disable_existing_loggers': False,
+    'formatters': {
         'console': {
-            'class': 'logging.StreamHandler',
-            'stream': sys.stdout,
+            'format': '[%(asctime)s][%(levelname)s][%(name)s.%(funcName)s][%(username)s][%(userid)s] - %(message)s',
         },
-        'file_debug': {
+    },
+    'filters': {
+        # Add an unbound RequestFilter.
+        'request': {
+            '()': 'SciReg.middlewares.RequestFilter',
+        },
+    },
+    'handlers': {
+        'sentry': {
+            'level': 'ERROR', # To capture more than ERROR, change to WARNING, INFO, etc.
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+            'tags': {'custom-tag': 'x'},
+        },
+        'console': {
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'class': 'logging.StreamHandler',
+            'formatter': 'console',
+            'stream': sys.stdout,
+            'filters': ['request'],
         },
-        'file_error': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': 'error.log',
-        }
     },
     'root': {
-        'handlers': ['console', 'file_debug'],
-        'level': 'DEBUG'
+        'handlers': ['console'],
+        'level': 'DEBUG',
+        'filters': ['request'],
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file_error'],
-            'level': 'ERROR',
+            'handlers': ['console'],
+            'level': 'WARNING',
             'propagate': True,
+        },
+        'raven': {
+            'level': 'WARNING',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'sentry.errors': {
+            'level': 'WARNING',
+            'handlers': ['console'],
+            'propagate': False,
         },
     },
 }
