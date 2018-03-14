@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 VERIFY_SSL = True
 
 def get_sciauthz_project(project):
-
-    logger.debug("[SCIREG][DEBUG][sciauthz_services] - Request project info for: " + project)
+    logger.debug("Request project info for: " + project)
 
     f = furl(settings.PERMISSION_SERVER_URL)
     f.path.add('project')
@@ -22,14 +21,16 @@ def get_sciauthz_project(project):
     try:
         # Make the request.
         response = requests.post(f.url, data=data)
+        logger.debug("Project response: {}".format(response))
     except Exception as e:
-        logger.error("[SCIAUTH][ERROR][sciauthz_services] - Exception: " + str(e))
+        logger.exception(e)
         raise
 
     return response
 
 
 def user_has_manage_permission(jwt_headers, project):
+    logger.debug("Checking user permission for project: {}".format(project))
     is_manager = False
 
     f = furl(settings.PERMISSION_SERVER_URL)
@@ -39,21 +40,24 @@ def user_has_manage_permission(jwt_headers, project):
 
     try:
         user_permissions = requests.get(f.url, headers=jwt_headers, verify=VERIFY_SSL).json()
-    except JSONDecodeError:
+        logger.debug("Permission returned: {}".format(user_permissions))
+    except JSONDecodeError as e:
         user_permissions = None
-        logger.debug("[SCIREG][DEBUG][user_has_manage_permission] - No Valid permissions returned.")
+        logger.exception(e)
     except Exception as e:
-        logger.debug("SCIREG][DEBUG][user_has_manage_permission] - " + e)
+        logger.exception(e)
 
     if user_permissions is not None and 'results' in user_permissions:
         for perm in user_permissions['results']:
             if perm['permission'] == "MANAGE":
                 is_manager = True
 
+    logger.debug("Is manager: {}".format(is_manager))
     return is_manager
 
 
 def user_has_single_profile_view_permission(jwt_headers, project, email):
+    logger.debug("Checking user single profile view permission for project: {}".format(project))
 
     f = furl(settings.PERMISSION_SERVER_URL)
     f.path.add('user_permission/')
@@ -62,8 +66,9 @@ def user_has_single_profile_view_permission(jwt_headers, project, email):
 
     try:
         user_permissions = requests.get(f.url, headers=jwt_headers, verify=VERIFY_SSL).json()
-    except JSONDecodeError:
-        logger.debug("[SCIREG][DEBUG][user_has_single_profile_view_permission] - No Valid permissions returned.")
+        logger.debug("Permission returned: {}".format(user_permissions))
+    except JSONDecodeError as e:
+        logger.exception(e)
         user_permissions = {"count":0}
 
     if user_permissions["count"] > 0:
@@ -73,18 +78,19 @@ def user_has_single_profile_view_permission(jwt_headers, project, email):
 
 
 def check_view_profile_permission(jwt, project, email):
+    logger.debug("Checking view profile permission for project: {}".format(project))
 
     jwt_headers = {"Authorization": "JWT " + jwt.decode('utf-8'), 'Content-Type': 'application/json'}
 
-    logger.debug("[SCIREG][DEBUG][check_view_profile_permission] - Checking manager status.")
+    logger.debug("Checking manager status")
 
     manager = user_has_manage_permission(jwt_headers, project)
 
-    logger.debug("[SCIREG][DEBUG][check_view_profile_permission] - Checking single permission status.")
+    logger.debug("Checking single permission status")
 
     single_perm = user_has_single_profile_view_permission(jwt_headers, project, email)
 
-    logger.debug("[SCIREG][DEBUG][check_view_profile_permission] - (manager, single_perm) (%s, %s)" % (manager, single_perm))
+    logger.debug("(manager, single_perm) (%s, %s)" % (manager, single_perm))
 
     return manager or single_perm
 
