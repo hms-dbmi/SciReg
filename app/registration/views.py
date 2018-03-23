@@ -36,17 +36,19 @@ from SciReg import sciauthz_services
 import logging
 logger = logging.getLogger(__name__)
 
+
 @user_auth_and_jwt
 def profile(request, template_name='registration/profile.html'):
+    logger.debug("Profile - {}".format(request.method))
     user = request.user
-
-    logger.info("[SCIREG][DEBUG][profile] - Rendering user profile for user " + str(user.id))
 
     if request.method == 'POST':
 
         form = ProfileForm(request.POST)
 
         if form.is_valid():
+            logger.debug("Profile form is valid")
+
             # User should always have a registration at this point.
             registration = Registration.objects.get(user_id=user.id)
 
@@ -60,6 +62,7 @@ def profile(request, template_name='registration/profile.html'):
 
             return render(request, template_name, {'form': form})
     else:
+        logger.debug("Checking for user's profile")
         registration, created = Registration.objects.get_or_create(user_id=user.id)
 
         # This should be handled as read only pre-popluated.
@@ -67,7 +70,10 @@ def profile(request, template_name='registration/profile.html'):
 
         # If this is a new user registration, save so that we capture the e-mail.
         if created:
+            logger.debug("Creating profile for user")
             registration.save()
+        else:
+            logger.debug("Found profile for user")
 
         form = ProfileForm(instance=registration)
 
@@ -81,17 +87,27 @@ def access(request, template_name='registration/access.html'):
 
 @user_auth_and_jwt
 def email_confirm(request, template_name='registration/confirmed.html'):
+    logger.debug("Email Confirm: {}".format(request.GET))
     user = request.user
 
     success_url = None
     state = {'task': 'email_confirm'}
     try:
+        # Get the email confirm data
+        email_confirm_json = base64.urlsafe_b64decode(request.GET.get('email_confirm_value').encode('utf-8')).decode('utf-8')
+        email_confirm_dict = json.loads(email_confirm_json)
+
+        logger.debug('Email confirmation data: {}'.format(email_confirm_json))
+
         # Get the success url.
-        success_url = base64.urlsafe_b64decode(request.GET.get('success_url').encode('utf-8')).decode('utf-8')
+        success_url = email_confirm_dict.get('success_url')
+
+        logger.debug('Email confirmation success URL: {}'.format(success_url))
 
         # Get the email confirm data.
-        email_confirm_value = base64.urlsafe_b64decode(request.GET.get('email_confirm_value', '---').encode('utf-8')).decode('utf-8')
+        email_confirm_value = email_confirm_dict.get('email_confirm_value', '---')
         email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
+        logger.debug("Email Confirm value: {}".format(email_confirm_value))
 
         # Verify the code.
         signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
@@ -100,7 +116,10 @@ def email_confirm(request, template_name='registration/confirmed.html'):
 
         # If this is a new registration make sure we at least save the email/username.
         if created:
+            logger.debug("User created with ID: {}".format(user.id))
             registration.email = user.username
+        else:
+            logger.debug("User already existed with ID: {}".format(user.id))
 
         registration.email_confirmed = True
         registration.save()
@@ -115,7 +134,7 @@ def email_confirm(request, template_name='registration/confirmed.html'):
         messages.success(request, state['message'], extra_tags='success', fail_silently=True)
 
     except SignatureExpired as e:
-        logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
+        logger.exception(str(e))
         state.update({
             'state': 'failed',
             'message': 'This email confirmation code has expired, please try again.',
@@ -125,7 +144,7 @@ def email_confirm(request, template_name='registration/confirmed.html'):
         messages.error(request, state['message'], extra_tags='danger', fail_silently=True)
 
     except Exception as e:
-        logger.exception('[SciReg][registration.views.email_confirm] Exception: ' + str(e))
+        logger.exception(str(e))
         state.update({
             'state': 'failed',
             'message': 'This email confirmation code is invalid, please try again.',
@@ -136,6 +155,7 @@ def email_confirm(request, template_name='registration/confirmed.html'):
 
     # Check for success URL.
     if success_url:
+        logger.debug("Success URL: {}".format(success_url))
 
         # Build the URL.
         url = furl.furl(success_url)
@@ -147,6 +167,7 @@ def email_confirm(request, template_name='registration/confirmed.html'):
         return redirect(url.url)
 
     else:
+        logger.debug("No success URL")
 
         # Send them to a default URL
         return render(request, template_name)
@@ -166,8 +187,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             serializer.save(user=user, email=user.email)
 
     def get_queryset(self):
-
-        logger.debug("[SCIREG][DEBUG][RegistrationViewSet] - Getting user Profile.")
+        logger.debug("Getting user Profile")
 
         requested_user = self.request.query_params.get('email', None)
         project = self.request.query_params.get('project', None)
@@ -176,49 +196,66 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         if requested_user is not None:
             # If you're trying to get another users profile, you need the manage permission.
             if requesting_user != requested_user:
-                logger.debug("[SCIREG][DEBUG][RegistrationViewSet] - Requested other users profile.")
+                logger.debug("Requested other users profile")
 
                 view_others_permission = sciauthz_services.check_view_profile_permission(self.request.auth, project, requested_user)
 
                 if view_others_permission:
+                    logger.debug("Has permission, granting view")
                     return Registration.objects.filter(user__email__iexact=requested_user)
                 else:
+                    logger.debug("Does not have permission, returning 403")
                     return HttpResponseForbidden()
             else:
+                logger.debug("Returning requestor's profile")
                 return Registration.objects.filter(user=requesting_user)
 
         else:
+            logger.debug("Returning requestor's profile")
             return Registration.objects.filter(user=requesting_user)
 
     @list_route(methods=['post'])
     def send_confirmation_email(self, request):
+        logger.debug("Send confirmation email")
         user = request.user
-
-        # Store the data to be passed for verification.
-        email_confirm_dict = {}
-
-        # Build the email verification code and b64 encode it.
-        signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
-        signed_value = signer.sign(user.email)
-        signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
-
-        email_confirm_dict['email_confirm_value'] = base64.urlsafe_b64encode(bytes(signed_value, 'utf-8')).decode('utf-8')
-
-        # Check for a success url and b64 encode it.
-        success_url = request.data.get('success_url')
-        if success_url:
-            email_confirm_dict['success_url'] = base64.urlsafe_b64encode(bytes(success_url, 'utf-8')).decode('utf-8')
 
         # Build the URL.
         confirm_url = furl.furl(settings.CONFIRM_EMAIL_URL)
 
-        # Add the parameters.
-        confirm_url.args.update(email_confirm_dict)
+        try:
+            # Store the data to be passed for verification.
+            email_confirm_dict = {}
 
-        logger.debug("[SCIREG][DEBUG][send_confirmation_email] Assembled confirmation URL: %s" % confirm_url.url)
+            # Build the email verification code and b64 encode it.
+            signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
+            signed_value = signer.sign(user.email)
+            signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
+
+            email_confirm_dict['email_confirm_value'] = signed_value
+
+            # Check for a success url and b64 encode it.
+            success_url = request.data.get('success_url')
+            if success_url:
+                logger.debug('Sending email confirmation with success URL: {}'.format(success_url))
+                email_confirm_dict['success_url'] = success_url
+
+            # Deserialize and encode the JSON string
+            email_confirm_json = json.dumps(email_confirm_dict)
+            logger.debug('Sending email confirmation JSON: {}'.format(email_confirm_json))
+            email_confirm_parameter = base64.urlsafe_b64encode(bytes(email_confirm_json, 'utf-8')).decode('utf-8')
+
+            # Add the parameters.
+            confirm_url.query.params.set('email_confirm_value', email_confirm_parameter)
+
+        except Exception as e:
+            logger.exception(e)
+            return HttpResponse(status=500)
+
+        logger.debug('Sending email confirmation URL: {}'.format(confirm_url.url))
 
         # Check for a project id.
         project_id = request.data.get('project', None)
+        logger.debug("Email confirmation for project: %s" % project_id)
         if project_id is not None:
 
             try:
@@ -240,13 +277,13 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                     'project_icon_url': project_icon_url
                 }
 
-                email_send("{} - E-Mail Verification".format(project_title), [user.email],
+                sent = email_send("{} - E-Mail Verification".format(project_title), user.email,
                            message="verification",
                            extra=context)
 
-            except (requests.ConnectionError, ValueError):
-
-                logger.error("[SCIAUTH][ERROR][auth] - SciAuthZ project lookup failed")
+            except (requests.ConnectionError, ValueError) as e:
+                logger.exception(e)
+                logger.debug('Sending email confirmation with default HMS branding')
 
                 # This is a default email verification context with HMS branding
                 context = {
@@ -256,20 +293,25 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                     'project_icon_url': 'https://portal.dbmi.hms.harvard.edu/static/hms_dbmi_logo.png'
                 }
 
-                email_send("Harvard Medical School - E-Mail Verification", [user.email],
+                sent = email_send("Harvard Medical School - E-Mail Verification", user.email,
                            message="verification",
                            extra=context)
 
         else:
-            logger.debug("[SCIAUTH][DEBUG][auth] - No project identifier passed")
+            logger.error("No project ID passed")
 
             # TODO: Eliminate below, only using PPM branding until SciAuthZ is setup
-            email_send("People-Powered Medicine - E-Mail Verification", [user.email],
+            sent = email_send("People-Powered Medicine - E-Mail Verification", user.email,
                        message="verify",
                        extra={"confirm_url": confirm_url.url, "user_email": user.email})
             # TODO: Eliminate the above
 
-        return HttpResponse("SENT")
+        # Check the result
+        logger.debug('Sending email confirmation was sent: {}'.format(sent))
+        if sent:
+            return HttpResponse("SENT")
+        else:
+            return HttpResponse(status=500)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -283,37 +325,46 @@ class UserViewSet(viewsets.ModelViewSet):
 
         try:
             payload = jwt.decode(jwt_string, base64.b64decode(settings.AUTH0_SECRET, '-_'), algorithms=['HS256'], audience=settings.AUTH0_CLIENT_ID)
+            logger.debug("User verified JWT successfully")
         except jwt.InvalidTokenError:
-            print("No/Bad JWT Token.")
+            logger.error("User's JWT failed verification")
 
         if User.objects.filter(email=payload['email']).exists():
+            logger.debug("User found, returning")
             return User.objects.filter(email=payload['email'])
         else:
+            logger.debug("User not found, creating")
             user = User(username=payload['email'], email=payload['email'])
             user.set_unusable_password()
             user.save()
             return user
 
 
-def email_send(subject=None, recipients=None, message=None, extra=None):
+def email_send(subject, recipient, message, extra=None):
     """
     Send an e-mail to a list of participants with the given subject and message.
     Extra is dictionary of variables to be swapped into the template.
     """
-    for r in recipients:
-        msg_html = render_to_string('email/%s.html' % message, extra)
-        msg_plain = render_to_string('email/%s.txt' % message, extra)
 
-        logger.info("[SCIREG][DEBUG][email_send] About to send e-mail to %s" % r)
+    logger.debug('Email backend: {}'.format(settings.EMAIL_BACKEND))
+    logger.debug('Email SSL: {}'.format(settings.EMAIL_USE_SSL))
 
-        try:
-            msg = EmailMultiAlternatives(subject, msg_plain, settings.DEFAULT_FROM_EMAIL, [r])
-            msg.attach_alternative(msg_html, "text/html")
-            msg.send()
-        except gaierror:
-            logger.error("[SCIREG][DEBUG][email_send] Could not send mail! Possible bad server connection.")
-        except:
-            print(sys.exc_info()[0])
+    msg_html = render_to_string('email/%s.html' % message, extra)
+    msg_plain = render_to_string('email/%s.txt' % message, extra)
 
-        logger.info("[SCIREG][DEBUG][email_send] E-Mail Success!")
+    logger.info("About to send email to %s" % recipient)
 
+    try:
+        msg = EmailMultiAlternatives(subject, msg_plain, settings.DEFAULT_FROM_EMAIL, [recipient])
+        msg.attach_alternative(msg_html, "text/html")
+        msg.send()
+        logger.info("Email sent successfully")
+        return True
+
+    except gaierror as e:
+        logger.error("Could not send mail: {}".format(e))
+    except Exception as e:
+        logger.error("Could not send mail: {}".format(e))
+        print(sys.exc_info()[0])
+
+    return False
