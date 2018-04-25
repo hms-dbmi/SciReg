@@ -11,12 +11,11 @@ https://docs.djangoproject.com/en/1.10/ref/settings/
 """
 
 import os
-import base64
-
 from os.path import normpath, join, dirname, abspath
 from django.utils.crypto import get_random_string
 from django.contrib.messages import constants as message_constants
 import sys
+from SciReg import environment
 
 chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
 
@@ -31,12 +30,12 @@ SECRET_KEY = os.environ.get("SECRET_KEY", get_random_string(50, chars))
 EMAIL_CONFIRM_SALT = os.environ.get("SALT", get_random_string(50, chars))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = environment.ENV_BOOL("DJANGO_DEBUG", False)
 
-ALLOWED_HOSTS = [os.environ.get("ALLOWED_HOSTS")]
+ALLOWED_HOSTS = environment.ENV_LIST("ALLOWED_HOSTS")
 
-# Set the message level.
-MESSAGE_LEVEL = message_constants.INFO
+# Set the message level
+MESSAGE_LEVEL = message_constants.INFO if not DEBUG else message_constants.DEBUG
 
 # Application definition
 INSTALLED_APPS = [
@@ -121,27 +120,40 @@ STATICFILES_FINDERS = (
 #########
 
 #########
-# Specifics
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',
-                                   'rest_framework.permissions.DjangoModelPermissions'),
-    'PAGE_SIZE': 10,
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'pyauth0jwtrest.auth0authenticaterest.Auth0JSONWebTokenAuthentication',
-    ),
-}
-
-JWT_AUTH = {
-    'JWT_SECRET_KEY': base64.b64decode(os.environ.get("AUTH0_SECRET", ""), '-_'),
-    'JWT_AUDIENCE': os.environ.get("AUTH0_CLIENT_ID"),
-    'JWT_PAYLOAD_GET_USERNAME_HANDLER': 'registration.permissions.jwt_get_username_from_payload'
-}
+# Auth0
 
 AUTH0_CLIENT_ID = os.environ.get("AUTH0_CLIENT_ID")
+AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN")
 AUTH0_SECRET = os.environ.get("AUTH0_SECRET")
 AUTH0_SUCCESS_URL = os.environ.get("AUTH0_SUCCESS_URL")
 AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")
+#########
 
+#########
+# Django Rest Framework
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.DjangoModelPermissions'
+    ),
+    'PAGE_SIZE': 10,
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'pyauth0jwtrest.authentication.Auth0JSONWebTokenAuthentication',
+    ),
+}
+
+AUTH0 = {
+  'CLIENT_ID': os.environ.get("AUTH0_CLIENT_ID"),
+  'DOMAIN': os.environ.get("AUTH0_DOMAIN"),
+  'ALGORITHM': 'RS256',
+  'JWT_AUTH_HEADER_PREFIX': 'JWT',
+  'AUTHORIZATION_EXTENSION': False,
+}
+
+###
+
+#########
+# Application settings
 LOGIN_URL = '/login/'
 
 PERMISSION_SERVER_URL = os.environ.get("PERMISSION_SERVER_URL")
@@ -152,8 +164,9 @@ AUTHENTICATION_BACKENDS = ('pyauth0jwt.auth0authenticate.Auth0Authentication', '
 
 COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN")
 
-EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
-EMAIL_USE_SSL = True
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", 'django_smtp_ssl.SSLEmailBackend')
+EMAIL_USE_SSL = EMAIL_BACKEND == 'django_smtp_ssl.SSLEmailBackend'
+
 EMAIL_HOST = os.environ.get("EMAIL_HOST")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
@@ -161,8 +174,10 @@ EMAIL_PORT = os.environ.get("EMAIL_PORT")
 
 CONFIRM_EMAIL_URL = os.environ.get("CONFIRM_EMAIL_URL")
 DEFAULT_FROM_EMAIL = "registration-no-reply@dbmi.hms.harvard.edu"
+###
 
-# Configure logging
+#########
+# Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -215,6 +230,7 @@ LOGGING = {
         },
     },
 }
+###
 
 # Default settings
 BOOTSTRAP3 = {
