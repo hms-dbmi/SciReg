@@ -19,8 +19,6 @@ def jwt_get_username_from_payload(payload):
     """
     logger.debug("Attempting to Authenticate")
 
-    logger.debug('testing')
-
     try:
         User.objects.get(username=payload.get('email'))
         logger.debug("User found")
