@@ -7,4 +7,3 @@ error.log
 app/assets
 *.patch
 *.pyc
-app/registration/permissions.py
