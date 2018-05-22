@@ -1,37 +1,49 @@
-from django.shortcuts import render
-from django.shortcuts import redirect
-from django.contrib import messages
-from .forms import ProfileForm
-from urllib import parse
-from registration.models import Registration
-from rest_framework import viewsets
-from rest_framework import permissions
-from rest_framework.decorators import list_route
-from registration.serializers import RegistrationSerializer
-from registration.serializers import UserSerializer
-from registration.permissions import IsAssociatedUser
-from rest_framework.permissions import AllowAny
-from django.template.loader import render_to_string
-from django.conf import settings
-from django.core.signing import TimestampSigner
-from django.core.signing import SignatureExpired
-from django.core.signing import BadSignature
-from datetime import timedelta
-from django.http import HttpResponse
-from django.contrib.auth.models import User
-from pyauth0jwt.auth0authenticate import user_auth_and_jwt
-from django.core.mail import EmailMultiAlternatives
-from socket import gaierror
 import sys
 import furl
 import jwt
 import base64
 import json
 import requests
+
+from datetime import timedelta
+from functools import reduce
+from operator import or_
 from os.path import normpath, join, dirname, abspath
+from socket import gaierror
+from urllib import parse
+
+from rest_framework import status
+from rest_framework import permissions
+from rest_framework import viewsets
+from rest_framework.decorators import list_route
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
+from registration.serializers import RegistrationSerializer
+from registration.serializers import UserSerializer
+from registration.permissions import IsAssociatedUser
+
+from pyauth0jwt.auth0authenticate import user_auth_and_jwt
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.models import User
+from django.core.mail import EmailMultiAlternatives
+from django.core.serializers.json import DjangoJSONEncoder
+from django.core.signing import TimestampSigner
+from django.core.signing import SignatureExpired
+from django.core.signing import BadSignature
+from django.db.models import Count
+from django.db.models import Q
+from django.http import HttpResponse
 from django.http import HttpResponseForbidden
+from django.shortcuts import render
+from django.shortcuts import redirect
+from django.template.loader import render_to_string
 
 from SciReg import sciauthz_services
+from registration.forms import ProfileForm
+from registration.models import Registration
 
 import logging
 logger = logging.getLogger(__name__)
@@ -193,8 +205,10 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         project = self.request.query_params.get('project', None)
         requesting_user = self.request.user
 
+        # When requesting a specific user or list of users
         if requested_user is not None:
-            # If you're trying to get another users profile, you need the manage permission.
+
+            # If you're trying to someone else's profile, check for permissions
             if requesting_user != requested_user:
                 logger.debug("Requested other users profile")
 
@@ -312,6 +326,38 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             return HttpResponse("SENT")
         else:
             return HttpResponse(status=500)
+
+    @list_route(methods=['post'])
+    def get_countries(self, request):
+        logger.debug("Get distinct countries for list of people")
+
+        project = request.data.get('project', None)
+        user = self.request.user
+
+        if project is None:
+            logger.error("Project parameter was not supplied.")
+            return Response("ERROR: Project parameter was not supplied.", status=status.HTTP_400_BAD_REQUEST)
+
+        jwt_headers = {"Authorization": "JWT " + self.request.auth.decode('utf-8'), 'Content-Type': 'application/json'}
+        manage_permission = sciauthz_services.user_has_manage_permission(jwt_headers, project)
+
+        # Only project managers should be allowed to make this call
+        if not manage_permission:
+            error_message = "User is not authorized to make a get_countries call."
+            logger.error(error_message)
+            return Response("ERROR: " + error_message, status=status.HTTP_403_FORBIDDEN)
+
+        # Emails should be provided in a comma delimited list
+        emails = request.data.get('emails', '').split(',')
+
+        # Build a query that will allow us to match on a list of emails while ignoring casing
+        query = reduce(or_, (Q(user__email__iexact=x) for x in emails))
+        registrations = Registration.objects.filter(query)
+
+        # Get the distinct countries and the count of each as "n"
+        countries = registrations.values("country").annotate(n=Count("country"))
+
+        return Response(data=list(countries), status=status.HTTP_200_OK)
 
 
 class UserViewSet(viewsets.ModelViewSet):
