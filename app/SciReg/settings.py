@@ -143,11 +143,11 @@ REST_FRAMEWORK = {
 }
 
 AUTH0 = {
-  'CLIENT_ID': os.environ.get("AUTH0_CLIENT_ID"),
-  'DOMAIN': os.environ.get("AUTH0_DOMAIN"),
-  'ALGORITHM': 'RS256',
-  'JWT_AUTH_HEADER_PREFIX': 'JWT',
-  'AUTHORIZATION_EXTENSION': False,
+    'CLIENT_ID': os.environ.get("AUTH0_CLIENT_ID"),
+    'DOMAIN': os.environ.get("AUTH0_DOMAIN"),
+    'ALGORITHM': 'RS256',
+    'JWT_AUTH_HEADER_PREFIX': 'JWT',
+    'AUTHORIZATION_EXTENSION': False,
 }
 
 ###
