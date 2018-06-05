@@ -122,7 +122,7 @@ STATICFILES_FINDERS = (
 #########
 # Auth0
 
-AUTH0_CLIENT_ID = os.environ.get("AUTH0_CLIENT_ID") # TODO remove once py-auth0-jwt(-rest) package(s) are upgraded
+AUTH0_CLIENT_ID = os.environ.get("AUTH0_CLIENT_ID") # Remaining here until views.UserViewSet no longer references it
 AUTH0_CLIENT_ID_LIST = os.environ.get("AUTH0_CLIENT_ID_LIST").split(",")
 AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN")
 AUTH0_SECRET = os.environ.get("AUTH0_SECRET")
@@ -144,7 +144,7 @@ REST_FRAMEWORK = {
 }
 
 AUTH0 = {
-    'CLIENT_ID': os.environ.get("AUTH0_CLIENT_ID"),
+    'CLIENT_ID_LIST': AUTH0_CLIENT_ID_LIST,
     'DOMAIN': os.environ.get("AUTH0_DOMAIN"),
     'ALGORITHM': 'RS256',
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
