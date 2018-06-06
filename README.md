@@ -9,13 +9,7 @@ In order to verify the signature on the JWT we need the same secret as it was si
 ### Auth0
 
 ~~~
-JWT_AUTH = {
-    'JWT_SECRET_KEY': base64.b64decode(os.environ.get("AUTH0_SECRET", ""), '-_'),
-    'JWT_AUDIENCE': os.environ.get("AUTH0_CLIENT_ID"),
-    'JWT_PAYLOAD_GET_USERNAME_HANDLER': 'registration.permissions.jwt_get_username_from_payload'
-}
-
-AUTH0_CLIENT_ID = os.environ.get("AUTH0_CLIENT_ID")
+AUTH0_CLIENT_ID_LIST = os.environ.get("AUTH0_CLIENT_ID_LIST")
 AUTH0_SECRET = os.environ.get("AUTH0_SECRET")
 AUTH0_SUCCESS_URL = os.environ.get("AUTH0_SUCCESS_URL")
 AUTH0_LOGOUT_URL = os.environ.get("AUTH0_LOGOUT_URL")

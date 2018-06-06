@@ -370,6 +370,7 @@ class UserViewSet(viewsets.ModelViewSet):
         jwt_string = self.request.POST['JWT']
 
         try:
+            # TODO this method should probably be replaced with the latest py-auth0-jwt authentication methods or maybe this is unnecessary?
             payload = jwt.decode(jwt_string, base64.b64decode(settings.AUTH0_SECRET, '-_'), algorithms=['HS256'], audience=settings.AUTH0_CLIENT_ID)
             logger.debug("User verified JWT successfully")
         except jwt.InvalidTokenError:
