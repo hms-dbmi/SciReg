@@ -10,6 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegistrationSerializer(CountryFieldMixin, serializers.ModelSerializer):
+    last_updated = serializers.DateTimeField(format="%Y-%m-%d", required=False, read_only=True)
 
     class Meta:
         model = Registration
@@ -29,4 +30,5 @@ class RegistrationSerializer(CountryFieldMixin, serializers.ModelSerializer):
                   'professional_title',
                   'affiliation_type',
                   'institution',
-                  'alternate_email')
+                  'alternate_email',
+                  'last_updated')
