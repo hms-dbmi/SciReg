@@ -230,7 +230,6 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
     @list_route(methods=['post'])
     def send_confirmation_email(self, request):
-        logger.debug("Send confirmation email")
         user = request.user
 
         # Build the URL.
@@ -329,14 +328,13 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
     @list_route(methods=['post'])
     def get_countries(self, request):
-        logger.debug("Get distinct countries for list of people")
-
         project = request.data.get('project', None)
         user = self.request.user
 
         if project is None:
-            logger.error("Project parameter was not supplied.")
-            return Response("ERROR: Project parameter was not supplied.", status=status.HTTP_400_BAD_REQUEST)
+            error_message = "Project parameter was not supplied."
+            logger.error(error_message)
+            return Response("ERROR: " + error_message, status=status.HTTP_400_BAD_REQUEST)
 
         jwt_headers = {"Authorization": "JWT " + self.request.auth.decode('utf-8'), 'Content-Type': 'application/json'}
         manage_permission = sciauthz_services.user_has_manage_permission(jwt_headers, project)
@@ -358,6 +356,43 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         countries = registrations.values("country").annotate(n=Count("country"))
 
         return Response(data=list(countries), status=status.HTTP_200_OK)
+
+    @list_route(methods=['post'])
+    def get_names(self, request):
+        project = request.data.get('project', None)
+        user = self.request.user
+
+        if project is None:
+            error_message = "Project parameter was not supplied."
+            logger.error(error_message)
+            return Response("ERROR: " + error_message, status=status.HTTP_400_BAD_REQUEST)
+
+        jwt_headers = {"Authorization": "JWT " + self.request.auth.decode('utf-8'), 'Content-Type': 'application/json'}
+        manage_permission = sciauthz_services.user_has_manage_permission(jwt_headers, project)
+
+         # Only project managers should be allowed to make this call
+        if not manage_permission:
+            error_message = "User is not authorized to make a get_names call."
+            logger.error(error_message)
+            return Response("ERROR: " + error_message, status=status.HTTP_403_FORBIDDEN)
+
+        # Emails should be provided in a comma delimited list
+        emails = request.data.get('emails', '').split(',')
+
+        # Build a query that will allow us to match on a list of emails while ignoring casing
+        query = reduce(or_, (Q(user__email__iexact=x) for x in emails))
+        registrations = Registration.objects.filter(query)
+
+        # Build a dictionary of names with emails as the key
+        names = {}
+
+        for registration in registrations:
+            names[registration.email] = {
+                'first_name': registration.first_name,
+                'last_name': registration.last_name
+            }
+
+        return Response(data=json.dumps(names), status=status.HTTP_200_OK)
 
 
 class UserViewSet(viewsets.ModelViewSet):
