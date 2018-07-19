@@ -71,8 +71,6 @@ if [ ! -d static ]; then
 fi
 python manage.py collectstatic --no-input
 
-python manage.py shell -c "from django.contrib.auth.models import User; User.objects.create_superuser('$ADMIN_EMAIL', '$ADMIN_EMAIL', '')" || echo "Super User already exists."
-
 /etc/init.d/nginx restart
 
 chown -R www-data:www-data /app
