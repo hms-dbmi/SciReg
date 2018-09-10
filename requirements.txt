@@ -1,0 +1,13 @@
+Django==1.10.8
+django-bootstrap3==11.0.0
+django-countries==5.1.1
+django-smtp-ssl==1.0
+djangorestframework==3.8.2
+django-health-check==3.7.0
+furl==1.2.1
+httmock==1.2.6
+mock==2.0.0
+mysqlclient==1.3.13
+py-auth0-jwt==0.3.2
+raven==6.9.0
+requests==2.19.1

@@ -1,4 +1,4 @@
-# SciReg
+# dbmireg
 
 This service keeps track of user information. Like the other Sci projects this service uses the DBMI_JWT to maintain an identity session.
 

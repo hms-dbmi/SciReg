@@ -1,6 +1,5 @@
 import sys
 import furl
-import jwt
 import base64
 import json
 import requests
@@ -8,40 +7,32 @@ import requests
 from datetime import timedelta
 from functools import reduce
 from operator import or_
-from os.path import normpath, join, dirname, abspath
 from socket import gaierror
-from urllib import parse
 
 from rest_framework import status
-from rest_framework import permissions
 from rest_framework import viewsets
 from rest_framework.decorators import list_route
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 
 from registration.serializers import RegistrationSerializer
-from registration.serializers import UserSerializer
-from registration.permissions import IsAssociatedUser
+from registration.permissions import get_email
 
-from pyauth0jwt.auth0authenticate import user_auth_and_jwt
+from pyauth0jwt.auth0authenticate import dbmi_jwt
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.models import User
 from django.core.mail import EmailMultiAlternatives
-from django.core.serializers.json import DjangoJSONEncoder
 from django.core.signing import TimestampSigner
 from django.core.signing import SignatureExpired
-from django.core.signing import BadSignature
 from django.db.models import Count
 from django.db.models import Q
 from django.http import HttpResponse
 from django.http import HttpResponseForbidden
-from django.shortcuts import render
-from django.shortcuts import redirect
+from django.shortcuts import render, redirect, reverse
 from django.template.loader import render_to_string
 
-from SciReg import sciauthz_services
+from dbmireg import sciauthz_services
 from registration.forms import ProfileForm
 from registration.models import Registration
 
@@ -49,10 +40,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@user_auth_and_jwt
+@dbmi_jwt
 def profile(request, template_name='registration/profile.html'):
     logger.debug("Profile - {}".format(request.method))
-    user = request.user
+
+    # Get the email from the JWT
+    email = get_email(request)
 
     if request.method == 'POST':
 
@@ -62,7 +55,7 @@ def profile(request, template_name='registration/profile.html'):
             logger.debug("Profile form is valid")
 
             # User should always have a registration at this point.
-            registration = Registration.objects.get(user_id=user.id)
+            registration = Registration.objects.get(email=email)
 
             # Extract data from form into registration object.
             registration.affiliation = form.cleaned_data['affiliation']
@@ -75,10 +68,7 @@ def profile(request, template_name='registration/profile.html'):
             return render(request, template_name, {'form': form})
     else:
         logger.debug("Checking for user's profile")
-        registration, created = Registration.objects.get_or_create(user_id=user.id)
-
-        # This should be handled as read only pre-popluated.
-        registration.email = user.username
+        registration, created = Registration.objects.get_or_create(email=email)
 
         # If this is a new user registration, save so that we capture the e-mail.
         if created:
@@ -89,18 +79,20 @@ def profile(request, template_name='registration/profile.html'):
 
         form = ProfileForm(instance=registration)
 
-    return render(request, template_name, {'form': form, 'user': user})
+    return render(request, template_name, {'form': form, 'email': email})
 
 
-@user_auth_and_jwt
+@dbmi_jwt
 def access(request, template_name='registration/access.html'):
     return render(request, template_name)
 
 
-@user_auth_and_jwt
+@dbmi_jwt
 def email_confirm(request, template_name='registration/confirmed.html'):
     logger.debug("Email Confirm: {}".format(request.GET))
-    user = request.user
+
+    # Get the email from the JWT
+    email = get_email(request)
 
     success_url = None
     state = {'task': 'email_confirm'}
@@ -118,20 +110,19 @@ def email_confirm(request, template_name='registration/confirmed.html'):
 
         # Get the email confirm data.
         email_confirm_value = email_confirm_dict.get('email_confirm_value', '---')
-        email_confirm_value = user.email + ":" + email_confirm_value.replace(".", ":")
+        email_confirm_value = email + ":" + email_confirm_value.replace(".", ":")
         logger.debug("Email Confirm value: {}".format(email_confirm_value))
 
         # Verify the code.
         signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
         signer.unsign(email_confirm_value, max_age=timedelta(seconds=172800))
-        registration, created = Registration.objects.get_or_create(user_id=user.id)
+        registration, created = Registration.objects.get_or_create(email=email)
 
         # If this is a new registration make sure we at least save the email/username.
         if created:
-            logger.debug("User created with ID: {}".format(user.id))
-            registration.email = user.username
+            logger.debug("User created with ID: {}".format(email))
         else:
-            logger.debug("User already existed with ID: {}".format(user.id))
+            logger.debug("User already existed with ID: {}".format(email))
 
         registration.email_confirmed = True
         registration.save()
@@ -188,15 +179,14 @@ def email_confirm(request, template_name='registration/confirmed.html'):
 class RegistrationViewSet(viewsets.ModelViewSet):
     queryset = Registration.objects.all()
     serializer_class = RegistrationSerializer
-    permission_classes = (permissions.IsAuthenticated, IsAssociatedUser,)
 
     def perform_create(self, serializer):
-        user = self.request.user
+        email = self.request.user
 
-        if Registration.objects.filter(email=user.email).exists():
-            return Registration.objects.filter(email=user.email)
+        if Registration.objects.filter(email=email).exists():
+            return Registration.objects.filter(email=email)
         else:
-            serializer.save(user=user, email=user.email)
+            serializer.save(email=email)
 
     def get_queryset(self):
         logger.debug("Getting user Profile")
@@ -216,32 +206,36 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
                 if view_others_permission:
                     logger.debug("Has permission, granting view")
-                    return Registration.objects.filter(user__email__iexact=requested_user)
+                    return Registration.objects.filter(email__iexact=requested_user)
                 else:
                     logger.debug("Does not have permission, returning 403")
-                    return HttpResponseForbidden()
+                    raise PermissionDenied
             else:
                 logger.debug("Returning requestor's profile")
-                return Registration.objects.filter(user=requesting_user)
+                return Registration.objects.filter(email=requesting_user)
 
         else:
             logger.debug("Returning requestor's profile")
-            return Registration.objects.filter(user=requesting_user)
+            return Registration.objects.filter(email=requesting_user)
 
     @list_route(methods=['post'])
     def send_confirmation_email(self, request):
-        user = request.user
-
-        # Build the URL.
-        confirm_url = furl.furl(settings.CONFIRM_EMAIL_URL)
+        email = request.user
 
         try:
+            # Build the URL.
+            confirm_url = furl.furl(request.build_absolute_uri(reverse('registration:email_confirm')))
+
+            # Check for a locally running container that will use the container hostname instead of resolvable host
+            if confirm_url.host == 'dbmireg':
+                confirm_url.host = 'localhost'
+
             # Store the data to be passed for verification.
             email_confirm_dict = {}
 
             # Build the email verification code and b64 encode it.
             signer = TimestampSigner(salt=settings.EMAIL_CONFIRM_SALT)
-            signed_value = signer.sign(user.email)
+            signed_value = signer.sign(email)
             signed_value = signed_value.split(":")[1] + "." + signed_value.split(":")[2]
 
             email_confirm_dict['email_confirm_value'] = signed_value
@@ -283,14 +277,14 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                 # Add the title and description to the context.
                 context = {
                     "confirm_url": confirm_url.url,
-                    "user_email": user.email,
+                    "user_email": email,
                     'project': project_id,
                     'project_title': project_title,
                     'project_description': project.get('description', None),
                     'project_icon_url': project_icon_url
                 }
 
-                sent = email_send("{} - E-Mail Verification".format(project_title), user.email,
+                sent = email_send("{} - E-Mail Verification".format(project_title), email,
                            message="verification",
                            extra=context)
 
@@ -301,12 +295,12 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                 # This is a default email verification context with HMS branding
                 context = {
                     "confirm_url": confirm_url.url,
-                    "user_email": user.email,
+                    "user_email": email,
                     'project_title': 'Harvard Medical School Department of Biomedical Informatics',
                     'project_icon_url': 'https://portal.dbmi.hms.harvard.edu/static/hms_dbmi_logo.png'
                 }
 
-                sent = email_send("Harvard Medical School - E-Mail Verification", user.email,
+                sent = email_send("Harvard Medical School - E-Mail Verification", email,
                            message="verification",
                            extra=context)
 
@@ -314,9 +308,9 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             logger.error("No project ID passed")
 
             # TODO: Eliminate below, only using PPM branding until SciAuthZ is setup
-            sent = email_send("People-Powered Medicine - E-Mail Verification", user.email,
+            sent = email_send("People-Powered Medicine - E-Mail Verification", email,
                        message="verify",
-                       extra={"confirm_url": confirm_url.url, "user_email": user.email})
+                       extra={"confirm_url": confirm_url.url, "user_email": email})
             # TODO: Eliminate the above
 
         # Check the result
@@ -329,7 +323,6 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     @list_route(methods=['post'])
     def get_countries(self, request):
         project = request.data.get('project', None)
-        user = self.request.user
 
         if project is None:
             error_message = "Project parameter was not supplied."
@@ -349,7 +342,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         emails = request.data.get('emails', '').split(',')
 
         # Build a query that will allow us to match on a list of emails while ignoring casing
-        query = reduce(or_, (Q(user__email__iexact=x) for x in emails))
+        query = reduce(or_, (Q(email__iexact=x) for x in emails))
         registrations = Registration.objects.filter(query)
 
         # Get the distinct countries and the count of each as "n"
@@ -360,7 +353,6 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     @list_route(methods=['post'])
     def get_names(self, request):
         project = request.data.get('project', None)
-        user = self.request.user
 
         if project is None:
             error_message = "Project parameter was not supplied."
@@ -380,7 +372,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         emails = request.data.get('emails', '').split(',')
 
         # Build a query that will allow us to match on a list of emails while ignoring casing
-        query = reduce(or_, (Q(user__email__iexact=x) for x in emails))
+        query = reduce(or_, (Q(email__iexact=x) for x in emails))
         registrations = Registration.objects.filter(query)
 
         # Build a dictionary of names with emails as the key
@@ -395,41 +387,11 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         return Response(data=json.dumps(names), status=status.HTTP_200_OK)
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = (AllowAny,)
-
-    def perform_create(self, serializer):
-
-        jwt_string = self.request.POST['JWT']
-
-        try:
-            # TODO this method should probably be replaced with the latest py-auth0-jwt authentication methods or maybe this is unnecessary?
-            payload = jwt.decode(jwt_string, base64.b64decode(settings.AUTH0_SECRET, '-_'), algorithms=['HS256'], audience=settings.AUTH0_CLIENT_ID)
-            logger.debug("User verified JWT successfully")
-        except jwt.InvalidTokenError:
-            logger.error("User's JWT failed verification")
-
-        if User.objects.filter(email=payload['email']).exists():
-            logger.debug("User found, returning")
-            return User.objects.filter(email=payload['email'])
-        else:
-            logger.debug("User not found, creating")
-            user = User(username=payload['email'], email=payload['email'])
-            user.set_unusable_password()
-            user.save()
-            return user
-
-
 def email_send(subject, recipient, message, extra=None):
     """
     Send an e-mail to a list of participants with the given subject and message.
     Extra is dictionary of variables to be swapped into the template.
     """
-
-    logger.debug('Email backend: {}'.format(settings.EMAIL_BACKEND))
-    logger.debug('Email SSL: {}'.format(settings.EMAIL_USE_SSL))
 
     msg_html = render_to_string('email/%s.html' % message, extra)
     msg_plain = render_to_string('email/%s.txt' % message, extra)

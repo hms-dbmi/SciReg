@@ -1,9 +1,6 @@
 from django.db import models
 from django_countries.fields import CountryField
 
-# Users are linked to a registration.
-from django.contrib.auth.models import User
-
 
 class Registration(models.Model):
     """
@@ -20,8 +17,6 @@ class Registration(models.Model):
         (NONE, 'None')
     )
 
-
-    user = models.ForeignKey(User)
     email = models.EmailField(blank=False, null=False, verbose_name="Registration Email")
     alternate_email = models.EmailField(blank=True, null=True, verbose_name="Alternate Email")
 
