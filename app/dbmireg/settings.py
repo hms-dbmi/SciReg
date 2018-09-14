@@ -154,7 +154,6 @@ COOKIE_DOMAIN = environment.ENV_STR("COOKIE_DOMAIN")
 
 EMAIL_BACKEND = environment.ENV_STR("EMAIL_BACKEND", 'django_smtp_ssl.SSLEmailBackend')
 EMAIL_USE_SSL = EMAIL_BACKEND == 'django_smtp_ssl.SSLEmailBackend'
-EMAIL_CONFIRM_URL = environment.ENV_STR("EMAIL_CONFIRM_URL")
 EMAIL_HOST = environment.ENV_STR("EMAIL_HOST")
 EMAIL_HOST_USER = environment.ENV_STR("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = environment.ENV_STR("EMAIL_HOST_PASSWORD")
